@@ -19,46 +19,55 @@ const T: Record<Lang, {
   emptyTitle: string; emptyBody: string;
   placeholder: string; hint: string;
   close: string; open: string;
+  rateLimitTitle: string; rateLimitBody: string;
 }> = {
   FR: {
-    name:        "Mercurio Assistant",
-    online:      "En ligne · répond instantanément",
-    emptyTitle:  "Bonjour ! Comment puis-je vous aider ?",
-    emptyBody:   "Posez-moi des questions sur nos produits, services, circuits ou toute information de notre site web.",
-    placeholder: "Écrivez votre question…",
-    hint:        "Entrée pour envoyer · Maj+Entrée pour nouvelle ligne",
-    close:       "Fermer",
-    open:        "Ouvrir le chat",
+    name:           "Mercurio Assistant",
+    online:         "En ligne · répond instantanément",
+    emptyTitle:     "Bonjour ! Comment puis-je vous aider ?",
+    emptyBody:      "Posez-moi des questions sur nos produits, services, circuits ou toute information de notre site web.",
+    placeholder:    "Écrivez votre question…",
+    hint:           "Entrée pour envoyer · Maj+Entrée pour nouvelle ligne",
+    close:          "Fermer",
+    open:           "Ouvrir le chat",
+    rateLimitTitle: "Service temporairement indisponible",
+    rateLimitBody:  "Application en cours de développement — réessayez dans {time}.",
   },
   ES: {
-    name:        "Mercurio Asistente",
-    online:      "En línea · responde al instante",
-    emptyTitle:  "¡Hola! ¿En qué puedo ayudarte?",
-    emptyBody:   "Pregúntame sobre nuestros productos, servicios, circuitos o cualquier información de nuestra web.",
-    placeholder: "Escribe tu pregunta…",
-    hint:        "Enter para enviar · Shift+Enter para saltar línea",
-    close:       "Cerrar",
-    open:        "Abrir chat",
+    name:           "Mercurio Asistente",
+    online:         "En línea · responde al instante",
+    emptyTitle:     "¡Hola! ¿En qué puedo ayudarte?",
+    emptyBody:      "Pregúntame sobre nuestros productos, servicios, circuitos o cualquier información de nuestra web.",
+    placeholder:    "Escribe tu pregunta…",
+    hint:           "Enter para enviar · Shift+Enter para saltar línea",
+    close:          "Cerrar",
+    open:           "Abrir chat",
+    rateLimitTitle: "Servicio temporalmente no disponible",
+    rateLimitBody:  "Aplicación en desarrollo — inténtalo de nuevo en {time}.",
   },
   EN: {
-    name:        "Mercurio Assistant",
-    online:      "Online · responds instantly",
-    emptyTitle:  "Hello! How can I help you?",
-    emptyBody:   "Ask me about our products, services, tours or any information from our website.",
-    placeholder: "Write your question…",
-    hint:        "Enter to send · Shift+Enter for new line",
-    close:       "Close",
-    open:        "Open chat",
+    name:           "Mercurio Assistant",
+    online:         "Online · responds instantly",
+    emptyTitle:     "Hello! How can I help you?",
+    emptyBody:      "Ask me about our products, services, tours or any information from our website.",
+    placeholder:    "Write your question…",
+    hint:           "Enter to send · Shift+Enter for new line",
+    close:          "Close",
+    open:           "Open chat",
+    rateLimitTitle: "Service temporarily unavailable",
+    rateLimitBody:  "App under development — please try again in {time}.",
   },
   DE: {
-    name:        "Mercurio Assistent",
-    online:      "Online · antwortet sofort",
-    emptyTitle:  "Hallo! Wie kann ich Ihnen helfen?",
-    emptyBody:   "Fragen Sie mich zu unseren Produkten, Dienstleistungen, Touren oder anderen Informationen unserer Website.",
-    placeholder: "Schreiben Sie Ihre Frage…",
-    hint:        "Enter zum Senden · Shift+Enter für neue Zeile",
-    close:       "Schließen",
-    open:        "Chat öffnen",
+    name:           "Mercurio Assistent",
+    online:         "Online · antwortet sofort",
+    emptyTitle:     "Hallo! Wie kann ich Ihnen helfen?",
+    emptyBody:      "Fragen Sie mich zu unseren Produkten, Dienstleistungen, Touren oder anderen Informationen unserer Website.",
+    placeholder:    "Schreiben Sie Ihre Frage…",
+    hint:           "Enter zum Senden · Shift+Enter für neue Zeile",
+    close:          "Schließen",
+    open:           "Chat öffnen",
+    rateLimitTitle: "Dienst vorübergehend nicht verfügbar",
+    rateLimitBody:  "App in Entwicklung — bitte versuchen Sie es in {time} erneut.",
   },
 };
 
@@ -172,14 +181,23 @@ export default function ChatWidget({
   contexts?: string[];
   theme?: "odoo" | "destino";
 }) {
-  const [open, setOpen]         = useState(alwaysOpen);
-  const [lang, setLang]         = useState<Lang>("FR");
-  const [langOpen, setLangOpen] = useState(false);
+  const [open, setOpen]                         = useState(alwaysOpen);
+  const [lang, setLang]                         = useState<Lang>("FR");
+  const [langOpen, setLangOpen]                 = useState(false);
+  const [rateLimitedUntil, setRateLimitedUntil] = useState<number | null>(null);
+  const [secondsLeft, setSecondsLeft]           = useState(0);
   const tr = T[lang];
 
   const { messages, input, handleInputChange, handleSubmit, status } = useChat({
     api: "/api/chat",
     body: contexts && contexts.length > 0 ? { contexts } : undefined,
+    onError: (err) => {
+      const msg = err.message ?? "";
+      if (msg.startsWith("RATE_LIMIT:")) {
+        const seconds = parseInt(msg.slice(11), 10) || 60;
+        setRateLimitedUntil(Date.now() + seconds * 1000);
+      }
+    },
   });
 
   const scrollRef    = useRef<HTMLDivElement>(null);
@@ -187,6 +205,7 @@ export default function ChatWidget({
   const formRef      = useRef<HTMLFormElement>(null);
   const langDropRef  = useRef<HTMLDivElement>(null);
   const isLoading    = status === "submitted" || status === "streaming";
+  const isRateLimited = rateLimitedUntil !== null;
 
   // scroll al final al recibir mensajes
   useEffect(() => {
@@ -210,6 +229,19 @@ export default function ChatWidget({
     return () => document.removeEventListener("mousedown", handler);
   }, [langOpen]);
 
+  // countdown de rate-limit
+  useEffect(() => {
+    if (!rateLimitedUntil) return;
+    const tick = () => {
+      const left = Math.ceil((rateLimitedUntil - Date.now()) / 1000);
+      if (left <= 0) { setRateLimitedUntil(null); setSecondsLeft(0); }
+      else            { setSecondsLeft(left); }
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [rateLimitedUntil]);
+
   const onInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     handleInputChange(e);
     const ta = e.target;
@@ -217,10 +249,19 @@ export default function ChatWidget({
     ta.style.height = Math.min(ta.scrollHeight, 130) + "px";
   };
 
+  const formatTime = (secs: number): string => {
+    if (secs >= 60) {
+      const m = Math.floor(secs / 60);
+      const s = secs % 60;
+      return `${m}:${s.toString().padStart(2, "0")}`;
+    }
+    return `${secs}s`;
+  };
+
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      if (!isLoading && input.trim()) formRef.current?.requestSubmit();
+      if (!isLoading && !isRateLimited && input.trim()) formRef.current?.requestSubmit();
     }
   };
 
@@ -342,6 +383,18 @@ export default function ChatWidget({
             )}
           </div>
 
+          {/* ── Banner rate-limit ── */}
+          {isRateLimited && (
+            <div className={`rate-limit-banner${theme === "destino" ? " rate-limit-banner--destino" : ""}`}>
+              <span className="rate-limit-icon" aria-hidden="true">⏳</span>
+              <div className="rate-limit-text">
+                <strong>{tr.rateLimitTitle}</strong>
+                <span>{tr.rateLimitBody.replace("{time}", formatTime(secondsLeft))}</span>
+              </div>
+              <span className="rate-limit-timer">{formatTime(secondsLeft)}</span>
+            </div>
+          )}
+
           {/* ── Compositor ── */}
           <form ref={formRef} className="composer" onSubmit={handleSubmit}>
             <textarea
@@ -350,11 +403,12 @@ export default function ChatWidget({
               value={input}
               onChange={onInputChange}
               onKeyDown={onKeyDown}
-              placeholder={tr.placeholder}
+              placeholder={isRateLimited ? tr.rateLimitTitle : tr.placeholder}
               aria-label={tr.placeholder}
               autoComplete="off"
+              disabled={isRateLimited || isLoading}
             />
-            <button type="submit" disabled={isLoading || !input.trim()} aria-label="Enviar">
+            <button type="submit" disabled={isLoading || !input.trim() || isRateLimited} aria-label="Enviar">
               <SendIcon />
             </button>
           </form>

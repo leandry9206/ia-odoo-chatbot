@@ -13,8 +13,9 @@ Plataforma de **dos chatbots RAG** (Retrieval-Augmented Generation) que indexan 
 ## Stack
 
 - **Next.js 15** (App Router, TypeScript)
+- **Groq** vía `@ai-sdk/groq`
+  - Chat: `llama-3.3-70b-versatile` (free tier)
 - **Google Gemini** vía `@ai-sdk/google`
-  - Chat: `gemini-2.5-flash`
   - Embeddings: `gemini-embedding-001` (768 dimensiones, COSINE)
 - **Upstash Vector** — base vectorial serverless
 - **Vercel** — hosting
@@ -31,10 +32,68 @@ Plataforma de **dos chatbots RAG** (Retrieval-Augmented Generation) que indexan 
 
 Ambas interfaces soportan **FR · ES · EN · DE** de forma independiente.
 
-- **Landing page** (`/`): selector de pills en la esquina superior derecha. Idioma por defecto: **FR**.
+- **Landing page** (`/`): combobox desplegable en la esquina superior derecha. Idioma por defecto: **FR**.
 - **Widget de chat** (`/embed`): combobox desplegable en la barra superior de cada chat.
 
 Los textos de la UI cambian con el idioma seleccionado. El modelo responde en el idioma de la pregunta del usuario.
+
+---
+
+## Widget flotante externo
+
+Para integrar el chatbot en cualquier web sin modificar el proyecto, añade este snippet HTML:
+
+```html
+<!-- Mercurio (Odoo) — tema morado #5f5e97 -->
+<button id="chatbot-btn" onclick="toggleChat()" ...></button>
+<iframe id="chatbot-frame" src="https://tu-dominio.vercel.app/embed"></iframe>
+
+<!-- Destino World (Ghost) — tema marino oscuro -->
+<button id="chatbot-btn-d" onclick="toggleChatD()" ...></button>
+<iframe id="chatbot-frame-d" src="https://tu-dominio.vercel.app/embed?contexts=destino&theme=destino"></iframe>
+```
+
+El snippet completo (con estilos CSS y toggle JS) está en la conversación de desarrollo. Los IDs llevan sufijo `-d` para que ambos puedan coexistir en la misma página.
+
+---
+
+## Hoja de ruta — Ampliaciones planificadas
+
+| Ampliación | Descripción |
+|---|---|
+| **Conexión BD Odoo interna** | Conectar el agente a PostgreSQL de Odoo vía XML-RPC para consultar pedidos, clientes y productos en tiempo real |
+| **Sistema CRA VL** | Módulo Mercurio de creación de viajes; el agente asistirá al vendedor sugiriendo etapas y coherencia de destinos |
+| **Metodología RST** | Indexar los ficheros `.rst` de documentación antigua como nueva fuente de conocimiento (contexto `metodologia`) |
+
+---
+
+## Gestión de errores — Rate limit Groq
+
+Cuando la cuota gratuita de Groq se agota, el widget:
+
+- Detecta el error `429` y extrae el tiempo de espera del header `retry-after`
+- Muestra un banner ⏳ con cuenta atrás en los 4 idiomas
+- Bloquea el input y el botón de envío hasta que el contador llega a cero
+- Mensaje: *"Aplicación en desarrollo — inténtalo de nuevo en X:XX"*
+
+No se realizan llamadas adicionales a la API mientras el rate-limit está activo.
+
+---
+
+## Backups de la base de conocimiento
+
+```bash
+# Exportar toda la BD vectorial a JSON
+npm run export
+# → data/backup-YYYY-MM-DD.json
+# Incluye: id · vector 768d · metadata (text, url, title, source)
+# Guardar en GitHub (LFS) o Google Drive / S3
+
+# Restaurar / migrar
+npm run import --file data/backup-YYYY-MM-DD.json
+# Filtra por source si restauración parcial
+# Compatible con Pinecone, Qdrant, pgvector…
+```
 
 ---
 

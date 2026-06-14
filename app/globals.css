@@ -896,3 +896,53 @@ html, body {
     transition: none !important;
   }
 }
+
+/* ── Rate-limit banner ──────────────────────────────── */
+.rate-limit-banner {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 16px;
+  background: #fffbeb;
+  border-top: 1px solid #fde68a;
+  border-bottom: 1px solid #fde68a;
+}
+.rate-limit-icon { font-size: 1.15rem; flex-shrink: 0; line-height: 1; }
+.rate-limit-text { flex: 1; min-width: 0; }
+.rate-limit-text strong {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #92400e;
+  margin-bottom: 2px;
+}
+.rate-limit-text span {
+  font-size: 0.75rem;
+  color: #78350f;
+  line-height: 1.4;
+}
+.rate-limit-timer {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #b45309;
+  font-variant-numeric: tabular-nums;
+  font-family: "SF Mono", "Fira Code", ui-monospace, monospace;
+  flex-shrink: 0;
+  min-width: 3ch;
+  text-align: right;
+}
+.composer textarea:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* rate-limit banner — tema Destino */
+.rate-limit-banner--destino {
+  background: #1a2535;
+  border-top-color: #2d4060;
+  border-bottom-color: #2d4060;
+}
+.rate-limit-banner--destino .rate-limit-text strong { color: #e2b96a; }
+.rate-limit-banner--destino .rate-limit-text span   { color: #b8a47a; }
+.rate-limit-banner--destino .rate-limit-timer       { color: #e2b96a; }

@@ -8,11 +8,28 @@ const groq = createGroq({ apiKey: process.env.GROQ_API_KEY });
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
+function rateLimitSeconds(err: unknown): number | null {
+  const e = err as Record<string, unknown>;
+  const status = (e?.statusCode ?? e?.status) as number | undefined;
+  const msg    = String(e?.message ?? "").toLowerCase();
+  if (
+    status === 429 ||
+    msg.includes("rate limit") ||
+    msg.includes("too many requests")
+  ) {
+    const headers = e?.responseHeaders as Record<string, string> | undefined;
+    const raw     = headers?.["retry-after"] ?? headers?.["x-ratelimit-reset-requests"];
+    const parsed  = raw ? parseInt(String(raw), 10) : NaN;
+    return isNaN(parsed) ? 60 : Math.max(10, parsed);
+  }
+  return null;
+}
+
 export async function POST(req: Request) {
   try {
     const { messages, contexts } = (await req.json()) as {
       messages: CoreMessage[];
-      contexts?: string[]; // ids de fuentes a consultar; undefined = todos
+      contexts?: string[];
     };
 
     const lastUser = [...messages].reverse().find((m) => m.role === "user");
@@ -40,11 +57,21 @@ export async function POST(req: Request) {
 
     return result.toDataStreamResponse({
       getErrorMessage: (err) => {
-        console.error("Error en stream Gemini:", err);
+        const secs = rateLimitSeconds(err);
+        if (secs !== null) {
+          console.warn("Groq rate limit. Retry-after:", secs, "s");
+          return `RATE_LIMIT:${secs}`;
+        }
+        console.error("Error en stream Groq:", err);
         return "Error generando la respuesta. Inténtalo de nuevo.";
       },
     });
   } catch (err) {
+    const secs = rateLimitSeconds(err);
+    if (secs !== null) {
+      console.warn("Groq rate limit (outer catch). Retry-after:", secs, "s");
+      return new Response(`RATE_LIMIT:${secs}`, { status: 429 });
+    }
     console.error("Error en /api/chat:", err);
     return new Response("Ocurrió un error procesando tu mensaje.", {
       status: 500,
