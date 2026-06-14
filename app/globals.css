@@ -90,6 +90,50 @@ html, body {
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+/* ── Selector de idioma ─────────────────────────────── */
+.lang-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px 7px;
+  background: var(--accent-dark);
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.lang-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px 3px 7px;
+  border-radius: 20px;
+  border: 1.5px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.7);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+  user-select: none;
+}
+.lang-btn:hover {
+  background: rgba(255,255,255,0.18);
+  border-color: rgba(255,255,255,0.35);
+  color: #fff;
+  transform: translateY(-1px);
+}
+.lang-btn--active {
+  background: rgba(255,255,255,0.95);
+  border-color: transparent;
+  color: var(--accent-dark);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+}
+.lang-btn--active:hover { transform: none; }
+.lang-flag { font-size: 0.95rem; line-height: 1; }
+.lang-code { font-size: 0.68rem; font-weight: 700; }
+
 /* ── Header ─────────────────────────────────────────── */
 .panel-head {
   background: linear-gradient(135deg, var(--accent) 0%, #9b6991 100%);
