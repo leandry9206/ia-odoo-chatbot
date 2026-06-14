@@ -8,15 +8,30 @@ const groq = createGroq({ apiKey: process.env.GROQ_API_KEY });
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
+function parseGroqRetryTime(msg: string): number | null {
+  // "Please try again in 12m4.032s" or "try again in 45.5s"
+  const match = msg.match(/try again in\s+(?:(\d+)m)?(\d+(?:\.\d+)?)s/i);
+  if (!match) return null;
+  const minutes = match[1] ? parseInt(match[1], 10) : 0;
+  const seconds = parseFloat(match[2]);
+  return Math.ceil(minutes * 60 + seconds);
+}
+
 function rateLimitSeconds(err: unknown): number | null {
   const e = err as Record<string, unknown>;
   const status = (e?.statusCode ?? e?.status) as number | undefined;
-  const msg    = String(e?.message ?? "").toLowerCase();
+  const msg    = String(e?.message ?? "");
+  const msgLow = msg.toLowerCase();
   if (
     status === 429 ||
-    msg.includes("rate limit") ||
-    msg.includes("too many requests")
+    msgLow.includes("rate limit") ||
+    msgLow.includes("too many requests") ||
+    msgLow.includes("rate_limit_exceeded")
   ) {
+    // 1. Parse exact wait time from Groq error message
+    const fromMsg = parseGroqRetryTime(msg);
+    if (fromMsg !== null) return Math.max(10, fromMsg);
+    // 2. Fallback: retry-after header
     const headers = e?.responseHeaders as Record<string, string> | undefined;
     const raw     = headers?.["retry-after"] ?? headers?.["x-ratelimit-reset-requests"];
     const parsed  = raw ? parseInt(String(raw), 10) : NaN;
