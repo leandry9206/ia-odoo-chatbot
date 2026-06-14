@@ -248,6 +248,20 @@ html, body {
   border-bottom-right-radius: 4px;
 }
 
+/* ── Markdown dentro de burbujas del asistente ─────── */
+.bubble.assistant .md-p { margin: 0 0 8px; }
+.bubble.assistant .md-p:last-child { margin-bottom: 0; }
+.bubble.assistant .md-ul,
+.bubble.assistant .md-ol { margin: 4px 0 8px 16px; display: flex; flex-direction: column; gap: 2px; }
+.bubble.assistant .md-li { line-height: 1.5; }
+.bubble.assistant .md-code {
+  background: rgba(0,0,0,0.07);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 0.82em;
+  font-family: "SF Mono", "Fira Code", monospace;
+}
+
 /* ── Links dentro de burbujas ───────────────────────── */
 .msg-link {
   color: var(--accent);

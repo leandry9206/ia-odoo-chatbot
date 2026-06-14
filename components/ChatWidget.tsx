@@ -2,6 +2,7 @@
 
 import { useChat } from "ai/react";
 import { useEffect, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
 
 // ── Traducciones ────────────────────────────────────────────────
 type Lang = "FR" | "ES" | "EN" | "DE";
@@ -62,14 +63,26 @@ const T: Record<Lang, {
 };
 
 // ── Helpers ─────────────────────────────────────────────────────
-function renderContent(text: string) {
-  const parts = text.split(/(https?:\/\/[^\s]+)/g);
-  return parts.map((part, i) =>
-    /^https?:\/\//.test(part) ? (
-      <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="msg-link">
-        {part}
-      </a>
-    ) : part
+function BubbleContent({ text, isUser }: { text: string; isUser: boolean }) {
+  if (isUser) return <>{text}</>;
+  return (
+    <ReactMarkdown
+      components={{
+        a: ({ href, children }) => (
+          <a href={href} target="_blank" rel="noopener noreferrer" className="msg-link">
+            {children}
+          </a>
+        ),
+        // Evitar que <p> añada márgenes extra en el primer/último elemento
+        p: ({ children }) => <p className="md-p">{children}</p>,
+        ul: ({ children }) => <ul className="md-ul">{children}</ul>,
+        ol: ({ children }) => <ol className="md-ol">{children}</ol>,
+        li: ({ children }) => <li className="md-li">{children}</li>,
+        code: ({ children }) => <code className="md-code">{children}</code>,
+      }}
+    >
+      {text}
+    </ReactMarkdown>
   );
 }
 
@@ -223,7 +236,7 @@ export default function ChatWidget({
                   {m.role === "user" ? <UserIcon /> : <BotIcon />}
                 </div>
                 <div className={`bubble ${m.role === "user" ? "user" : "assistant"}`}>
-                  {renderContent(m.content)}
+                  <BubbleContent text={m.content} isUser={m.role === "user"} />
                 </div>
               </div>
             ))}
