@@ -102,9 +102,11 @@ const SendIcon = () => (
 export default function ChatWidget({
   alwaysOpen = false,
   contexts,
+  theme = "odoo",
 }: {
   alwaysOpen?: boolean;
-  contexts?: string[]; // ids de fuentes a consultar; undefined = todos los contextos
+  contexts?: string[];
+  theme?: "odoo" | "destino";
 }) {
   const [open, setOpen] = useState(alwaysOpen);
   const [lang, setLang] = useState<Lang>("FR");
@@ -146,7 +148,15 @@ export default function ChatWidget({
   return (
     <>
       {open && (
-        <div className={`panel${alwaysOpen ? " panel--embed" : ""}`} role="dialog" aria-label={tr.name}>
+        <div
+          className={[
+            "panel",
+            alwaysOpen ? "panel--embed" : "",
+            theme === "destino" ? "panel--theme-destino" : "",
+          ].filter(Boolean).join(" ")}
+          role="dialog"
+          aria-label={tr.name}
+        >
 
           {/* Selector de idioma — barra superior */}
           <div className="lang-bar">
@@ -186,6 +196,16 @@ export default function ChatWidget({
               </button>
             )}
           </div>
+
+          {/* Ola decorativa — solo tema Destino */}
+          {theme === "destino" && (
+            <div className="dest-wave" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 22" preserveAspectRatio="none">
+                <path d="M0,0 C100,22 300,0 400,16 L400,0 Z" fill="#1976D2" />
+                <path d="M0,6 C120,22 280,4 400,18 L400,22 L0,22 Z" fill="#f0f6ff" />
+              </svg>
+            </div>
+          )}
 
           {/* Mensajes */}
           <div className="messages" ref={scrollRef}>
@@ -239,7 +259,11 @@ export default function ChatWidget({
       )}
 
       {!alwaysOpen && (
-        <button className="launcher" onClick={() => setOpen((o) => !o)} aria-label={open ? tr.close : tr.open}>
+        <button
+          className={["launcher", theme === "destino" ? "launcher--theme-destino" : ""].filter(Boolean).join(" ")}
+          onClick={() => setOpen((o) => !o)}
+          aria-label={open ? tr.close : tr.open}
+        >
           {open ? (
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
               <path d="M6 6l12 12M18 6L6 18"/>
