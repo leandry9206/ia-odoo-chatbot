@@ -5,7 +5,7 @@ import ChatWidget from "@/components/ChatWidget";
 export default function Embed() {
   return (
     <div style={{ background: "transparent" }}>
-      <ChatWidget />
+      <ChatWidget alwaysOpen />
     </div>
   );
 }
