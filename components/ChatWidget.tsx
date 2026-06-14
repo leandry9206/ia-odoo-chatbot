@@ -1,7 +1,7 @@
 "use client";
 
 import { useChat } from "ai/react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 
 // ── Idiomas ─────────────────────────────────────────────────────
@@ -15,7 +15,8 @@ const LANGS: { code: Lang; flag: string; name: string }[] = [
 ];
 
 const T: Record<Lang, {
-  name: string; online: string;
+  name: string;
+  online: string; checking: string; waiting: string;
   emptyTitle: string; emptyBody: string;
   placeholder: string; hint: string;
   close: string; open: string;
@@ -24,6 +25,8 @@ const T: Record<Lang, {
   FR: {
     name:           "Mercurio Assistant",
     online:         "En ligne · répond instantanément",
+    checking:       "Vérification de la disponibilité…",
+    waiting:        "En attente · disponible dans {time}",
     emptyTitle:     "Bonjour ! Comment puis-je vous aider ?",
     emptyBody:      "Posez-moi des questions sur nos produits, services, circuits ou toute information de notre site web.",
     placeholder:    "Écrivez votre question…",
@@ -36,6 +39,8 @@ const T: Record<Lang, {
   ES: {
     name:           "Mercurio Asistente",
     online:         "En línea · responde al instante",
+    checking:       "Verificando disponibilidad…",
+    waiting:        "En espera · disponible en {time}",
     emptyTitle:     "¡Hola! ¿En qué puedo ayudarte?",
     emptyBody:      "Pregúntame sobre nuestros productos, servicios, circuitos o cualquier información de nuestra web.",
     placeholder:    "Escribe tu pregunta…",
@@ -48,6 +53,8 @@ const T: Record<Lang, {
   EN: {
     name:           "Mercurio Assistant",
     online:         "Online · responds instantly",
+    checking:       "Checking availability…",
+    waiting:        "Waiting · available in {time}",
     emptyTitle:     "Hello! How can I help you?",
     emptyBody:      "Ask me about our products, services, tours or any information from our website.",
     placeholder:    "Write your question…",
@@ -60,6 +67,8 @@ const T: Record<Lang, {
   DE: {
     name:           "Mercurio Assistent",
     online:         "Online · antwortet sofort",
+    checking:       "Verfügbarkeit wird geprüft…",
+    waiting:        "Wartend · verfügbar in {time}",
     emptyTitle:     "Hallo! Wie kann ich Ihnen helfen?",
     emptyBody:      "Fragen Sie mich zu unseren Produkten, Dienstleistungen, Touren oder anderen Informationen unserer Website.",
     placeholder:    "Schreiben Sie Ihre Frage…",
@@ -77,6 +86,8 @@ const DESTINO_EMPTY_BODY: Record<Lang, string> = {
   EN: "Ask me about any information or content on our website. I can also summarize or explain whatever you need.",
   DE: "Fragen Sie mich zu beliebigen Informationen oder Inhalten unserer Website. Ich kann Ihnen auch gerne zusammenfassen oder erklären, was Sie benötigen.",
 };
+
+const LS_KEY = "groq_rate_limit_until";
 
 // ── Markdown ─────────────────────────────────────────────────────
 function BubbleContent({ text, isUser }: { text: string; isUser: boolean }) {
@@ -186,7 +197,14 @@ export default function ChatWidget({
   const [langOpen, setLangOpen]                 = useState(false);
   const [rateLimitedUntil, setRateLimitedUntil] = useState<number | null>(null);
   const [secondsLeft, setSecondsLeft]           = useState(0);
+  const [checking, setChecking]                 = useState(true);
   const tr = T[lang];
+
+  const applyRateLimit = useCallback((seconds: number) => {
+    const until = Date.now() + seconds * 1000;
+    setRateLimitedUntil(until);
+    try { localStorage.setItem(LS_KEY, String(until)); } catch {}
+  }, []);
 
   const { messages, input, handleInputChange, handleSubmit, status } = useChat({
     api: "/api/chat",
@@ -195,31 +213,62 @@ export default function ChatWidget({
       const msg = err.message ?? "";
       if (msg.startsWith("RATE_LIMIT:")) {
         const seconds = parseInt(msg.slice(11), 10) || 60;
-        setRateLimitedUntil(Date.now() + seconds * 1000);
+        applyRateLimit(seconds);
       }
     },
   });
 
-  const scrollRef    = useRef<HTMLDivElement>(null);
-  const textareaRef  = useRef<HTMLTextAreaElement>(null);
-  const formRef      = useRef<HTMLFormElement>(null);
-  const langDropRef  = useRef<HTMLDivElement>(null);
-  const isLoading    = status === "submitted" || status === "streaming";
+  const scrollRef   = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const formRef     = useRef<HTMLFormElement>(null);
+  const langDropRef = useRef<HTMLDivElement>(null);
+  const isLoading   = status === "submitted" || status === "streaming";
   const isRateLimited = rateLimitedUntil !== null;
 
-  // scroll al final al recibir mensajes
+  // Comprobar disponibilidad al montar: localStorage → API
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(LS_KEY);
+      if (saved) {
+        const until = parseInt(saved, 10);
+        if (until > Date.now()) {
+          setRateLimitedUntil(until);
+          setChecking(false);
+          return;
+        }
+        localStorage.removeItem(LS_KEY);
+      }
+    } catch {}
+
+    fetch("/api/status")
+      .then((r) => r.json())
+      .then((data: { available: boolean; retryAfter?: number }) => {
+        if (!data.available && data.retryAfter) applyRateLimit(data.retryAfter);
+      })
+      .catch(() => {})
+      .finally(() => setChecking(false));
+  }, [applyRateLimit]);
+
+  // Limpiar localStorage cuando expira el rate-limit
+  useEffect(() => {
+    if (!rateLimitedUntil) {
+      try { localStorage.removeItem(LS_KEY); } catch {}
+    }
+  }, [rateLimitedUntil]);
+
+  // Scroll al fondo al recibir mensajes
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, isLoading]);
 
-  // reset altura del textarea al vaciar
+  // Reset altura textarea al vaciar
   useEffect(() => {
     if (!input && textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
   }, [input]);
 
-  // cerrar dropdown al hacer clic fuera
+  // Cerrar dropdown al hacer clic fuera
   useEffect(() => {
     if (!langOpen) return;
     const handler = (e: MouseEvent) => {
@@ -229,7 +278,7 @@ export default function ChatWidget({
     return () => document.removeEventListener("mousedown", handler);
   }, [langOpen]);
 
-  // countdown de rate-limit
+  // Countdown de rate-limit
   useEffect(() => {
     if (!rateLimitedUntil) return;
     const tick = () => {
@@ -267,6 +316,19 @@ export default function ChatWidget({
 
   const currentLang = LANGS.find((l) => l.code === lang)!;
 
+  // Estado del indicador de disponibilidad
+  const statusDotClass = checking
+    ? "status-dot status-dot--checking"
+    : isRateLimited
+      ? "status-dot status-dot--waiting"
+      : "status-dot status-dot--online";
+
+  const statusText = checking
+    ? tr.checking
+    : isRateLimited
+      ? tr.waiting.replace("{time}", formatTime(secondsLeft))
+      : tr.online;
+
   return (
     <>
       {open && (
@@ -280,7 +342,7 @@ export default function ChatWidget({
           aria-label={tr.name}
         >
 
-          {/* ── Selector de idioma (combobox) ── */}
+          {/* ── Selector de idioma ── */}
           <div className="lang-bar">
             <div className="lang-combobox" ref={langDropRef}>
               <button
@@ -329,7 +391,10 @@ export default function ChatWidget({
             </div>
             <div className="panel-head-info">
               <strong>{theme === "destino" ? "Destino World" : tr.name}</strong>
-              <span><span className="online-dot" />{tr.online}</span>
+              <span>
+                <span className={statusDotClass} aria-hidden="true" />
+                {statusText}
+              </span>
             </div>
             {!alwaysOpen && (
               <button className="close" onClick={() => setOpen(false)} aria-label={tr.close}>
@@ -364,7 +429,7 @@ export default function ChatWidget({
 
             {messages.map((m) => (
               <div key={m.id} className={`bubble-row${m.role === "user" ? " user" : ""}`}>
-                <div className="bubble-avatar">
+                <div className={`bubble-avatar${m.role === "user" ? " bubble-avatar--user" : ""}`}>
                   {m.role === "user" ? <UserIcon /> : <BotIcon />}
                 </div>
                 <div className={`bubble ${m.role === "user" ? "user" : "assistant"}`}>
@@ -386,12 +451,21 @@ export default function ChatWidget({
           {/* ── Banner rate-limit ── */}
           {isRateLimited && (
             <div className={`rate-limit-banner${theme === "destino" ? " rate-limit-banner--destino" : ""}`}>
-              <span className="rate-limit-icon" aria-hidden="true">⏳</span>
-              <div className="rate-limit-text">
-                <strong>{tr.rateLimitTitle}</strong>
-                <span>{tr.rateLimitBody.replace("{time}", formatTime(secondsLeft))}</span>
+              <div className="rate-limit-banner-inner">
+                <div className="rate-limit-icon-wrap" aria-hidden="true">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 6v6l4 2"/>
+                  </svg>
+                </div>
+                <div className="rate-limit-text">
+                  <strong>{tr.rateLimitTitle}</strong>
+                  <span>{tr.rateLimitBody.replace("{time}", formatTime(secondsLeft))}</span>
+                </div>
+                <div className="rate-limit-timer-wrap">
+                  <span className="rate-limit-timer">{formatTime(secondsLeft)}</span>
+                </div>
               </div>
-              <span className="rate-limit-timer">{formatTime(secondsLeft)}</span>
             </div>
           )}
 
