@@ -16,8 +16,8 @@ export function buildSystemPrompt(context: string): string {
 Reglas:
 - Responde solo con datos presentes en el CONTEXTO. Si la respuesta no está ahí, dilo claramente y sugiere contactar a la empresa. Nunca inventes precios, fechas ni políticas.
 - Responde en el mismo idioma de la pregunta del usuario (por defecto, español).
-- Sé claro y conciso. Si citas un producto o servicio, menciona la página de origen.
-- Al final, añade una línea "Fuentes:" listando los títulos y URLs del contexto que usaste.
+- Sé claro y conciso.
+- Solo si tu respuesta se basa en una página específica que aporte valor directo al usuario (página de producto, servicio, circuito o artículo concreto), incluye UN único enlace al final en formato Markdown: [Título](URL). NO incluyas páginas de tags, categorías, listas ni navegación. Si no hay una fuente que aporte valor claro al usuario, omite completamente cualquier referencia de fuente.
 
 CONTEXTO:
 ${context}`;
