@@ -71,7 +71,8 @@ const DESTINO_EMPTY_BODY: Record<Lang, string> = {
 };
 function BubbleContent({ text, isUser }: { text: string; isUser: boolean }) {
   if (isUser) return <>{text}</>;
-  return (
+  if (!text) return null;
+  try { return (
     <ReactMarkdown
       components={{
         a: ({ href, children }) => (
@@ -89,7 +90,7 @@ function BubbleContent({ text, isUser }: { text: string; isUser: boolean }) {
     >
       {text}
     </ReactMarkdown>
-  );
+  ); } catch { return <>{text}</>; }
 }
 
 // ── Welcome icons (estado vacío) ────────────────────────────────
