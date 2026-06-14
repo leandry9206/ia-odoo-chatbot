@@ -92,6 +92,39 @@ function BubbleContent({ text, isUser }: { text: string; isUser: boolean }) {
   );
 }
 
+// ── Welcome icons (estado vacío) ────────────────────────────────
+const MercurioWelcomeIcon = () => (
+  <svg width="58" height="58" viewBox="0 0 58 58" fill="none" aria-hidden="true">
+    <circle cx="29" cy="29" r="29" fill="#f3ecf1"/>
+    {/* Burbuja de chat */}
+    <path d="M13 20c0-2.8 2.2-5 5-5h22c2.8 0 5 2.2 5 5v12c0 2.8-2.2 5-5 5H24l-7 6v-6a5 5 0 0 1-4-5V20z" fill="#875A7B"/>
+    {/* Puntos dentro */}
+    <circle cx="21" cy="26" r="2" fill="white"/>
+    <circle cx="29" cy="26" r="2" fill="white"/>
+    <circle cx="37" cy="26" r="2" fill="white"/>
+    {/* Destello superior derecha */}
+    <path d="M44 10l1.2 3.6 3.8 1.2-3.8 1.2L44 19.6l-1.2-3.6L39 14.8l3.8-1.2L44 10z" fill="#875A7B" opacity="0.55"/>
+  </svg>
+);
+
+const DestinoWelcomeIcon = () => (
+  <svg width="58" height="58" viewBox="0 0 58 58" fill="none" aria-hidden="true">
+    <circle cx="29" cy="29" r="29" fill="rgba(27,34,40,0.08)"/>
+    {/* Globo terráqueo */}
+    <circle cx="29" cy="29" r="16" stroke="#1b2228" strokeWidth="2"/>
+    {/* Meridianos verticales */}
+    <ellipse cx="29" cy="29" rx="6.5" ry="16" stroke="#1b2228" strokeWidth="1.5" fill="none"/>
+    {/* Ecuador */}
+    <path d="M13 29h32" stroke="#1b2228" strokeWidth="1.5"/>
+    {/* Paralelos */}
+    <path d="M15.5 22c3.6-1.4 7.7-2.2 13.5-2.2s9.9.8 13.5 2.2" stroke="#1b2228" strokeWidth="1" strokeLinecap="round" opacity="0.4"/>
+    <path d="M15.5 36c3.6 1.4 7.7 2.2 13.5 2.2s9.9-.8 13.5-2.2" stroke="#1b2228" strokeWidth="1" strokeLinecap="round" opacity="0.4"/>
+    {/* Pin de ubicación encima */}
+    <circle cx="29" cy="16" r="3" fill="#1b2228"/>
+    <path d="M29 19v4" stroke="#1b2228" strokeWidth="2" strokeLinecap="round"/>
+  </svg>
+);
+
 // ── Icons ───────────────────────────────────────────────────────
 const BotIcon = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -230,7 +263,9 @@ export default function ChatWidget({
           <div className="messages" ref={scrollRef}>
             {messages.length === 0 && (
               <div className="empty">
-                <span className="empty-icon">🤖</span>
+                <span className="empty-icon">
+                  {theme === "destino" ? <DestinoWelcomeIcon /> : <MercurioWelcomeIcon />}
+                </span>
                 <strong>{tr.emptyTitle}</strong>
                 {theme === "destino" ? DESTINO_EMPTY_BODY[lang] : tr.emptyBody}
               </div>
