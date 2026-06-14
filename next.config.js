@@ -8,10 +8,8 @@ const nextConfig = {
       {
         source: "/embed",
         headers: [
-          {
-            key: "Content-Security-Policy",
-            value: "frame-ancestors 'self' https://*.tudominio.com",
-          },
+          { key: "X-Frame-Options", value: "ALLOWALL" },
+          { key: "Content-Security-Policy", value: "frame-ancestors *" },
         ],
       },
     ];
