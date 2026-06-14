@@ -21,7 +21,7 @@ const T: Record<Lang, {
   close: string; open: string;
 }> = {
   FR: {
-    name:        "Mercure Assistant",
+    name:        "Mercurio Assistant",
     online:      "En ligne · répond instantanément",
     emptyTitle:  "Bonjour ! Comment puis-je vous aider ?",
     emptyBody:   "Posez-moi des questions sur nos produits, services, circuits ou toute information de notre site web.",
@@ -41,7 +41,7 @@ const T: Record<Lang, {
     open:        "Abrir chat",
   },
   EN: {
-    name:        "Mercury Assistant",
+    name:        "Mercurio Assistant",
     online:      "Online · responds instantly",
     emptyTitle:  "Hello! How can I help you?",
     emptyBody:   "Ask me about our products, services, tours or any information from our website.",
@@ -51,7 +51,7 @@ const T: Record<Lang, {
     open:        "Open chat",
   },
   DE: {
-    name:        "Merkur Assistent",
+    name:        "Mercurio Assistent",
     online:      "Online · antwortet sofort",
     emptyTitle:  "Hallo! Wie kann ich Ihnen helfen?",
     emptyBody:   "Fragen Sie mich zu unseren Produkten, Dienstleistungen, Touren oder anderen Informationen unserer Website.",
@@ -198,7 +198,7 @@ export default function ChatWidget({
               </svg>
             </div>
             <div className="panel-head-info">
-              <strong>{tr.name}</strong>
+              <strong>{theme === "destino" ? "Destino World" : tr.name}</strong>
               <span><span className="online-dot" />{tr.online}</span>
             </div>
             {!alwaysOpen && (
@@ -214,8 +214,8 @@ export default function ChatWidget({
           {theme === "destino" && (
             <div className="dest-wave" aria-hidden="true">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 22" preserveAspectRatio="none">
-                <path d="M0,0 C100,22 300,0 400,16 L400,0 Z" fill="#1976D2" />
-                <path d="M0,6 C120,22 280,4 400,18 L400,22 L0,22 Z" fill="#f0f6ff" />
+                <path className="dest-wave-top"    d="M0,0 C100,22 300,0 400,16 L400,0 Z" />
+                <path className="dest-wave-bottom" d="M0,6 C120,22 280,4 400,18 L400,22 L0,22 Z" />
               </svg>
             </div>
           )}

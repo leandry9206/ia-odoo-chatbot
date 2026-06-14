@@ -354,20 +354,20 @@ html, body {
 }
 
 /* ════════════════════════════════════════════════════════
-   TEMA: DESTINO  (azul degradado, ola, botón circular)
+   TEMA: DESTINO  (#1b2228 oscuro, ola, botón circular)
    Activar: /embed?theme=destino  o  prop theme="destino"
    ════════════════════════════════════════════════════════ */
 
 .panel--theme-destino .lang-bar {
-  background: linear-gradient(90deg, #1354a3 0%, #1976D2 100%);
-  border-bottom: 1px solid rgba(255,255,255,0.1);
+  background: linear-gradient(90deg, #131920 0%, #1b2228 100%);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 .panel--theme-destino .lang-btn--active {
-  color: #1354a3;
+  color: #1b2228;
 }
 
 .panel--theme-destino .panel-head {
-  background: linear-gradient(135deg, #1354a3 0%, #1976D2 60%, #42A5F5 100%);
+  background: linear-gradient(135deg, #131920 0%, #1b2228 55%, #243242 100%);
   padding-bottom: 18px;
 }
 
@@ -376,87 +376,86 @@ html, body {
   flex-shrink: 0;
   height: 22px;
   overflow: hidden;
-  background: #f0f6ff;
-  margin-top: -1px; /* soldar con el header */
+  background: #f2f4f6;
+  margin-top: -1px;
 }
 .dest-wave svg { width: 100%; height: 100%; display: block; }
+.dest-wave-top    { fill: #243242; }   /* color final del degradado del header */
+.dest-wave-bottom { fill: #f2f4f6; }  /* color de fondo de mensajes */
 
 /* Área de mensajes */
 .panel--theme-destino .messages {
-  background: #f0f6ff;
+  background: #f2f4f6;
 }
 
 /* Burbujas */
 .panel--theme-destino .bubble.assistant {
   background: #ffffff;
-  border-color: #cfe0f5;
-  box-shadow: 0 1px 4px rgba(25,118,210,0.08);
+  border-color: #d4d8dc;
+  box-shadow: 0 1px 4px rgba(27,34,40,0.07);
 }
 .panel--theme-destino .bubble.user {
-  background: #1976D2;
+  background: #1b2228;
   color: #ffffff;
 }
 
 /* Avatar del bot */
 .panel--theme-destino .bubble-avatar {
-  background: #daeafe;
-  border-color: #b3d4f5;
-  color: #1976D2;
+  background: #e2e6ea;
+  border-color: #c8cfd6;
+  color: #1b2228;
 }
 
 /* Links */
-.panel--theme-destino .msg-link { color: #1565C0; text-decoration-color: rgba(21,101,192,0.4); }
-.panel--theme-destino .msg-link:hover { color: #0d47a1; }
-.panel--theme-destino .bubble.user .msg-link { color: rgba(255,255,255,0.88); }
+.panel--theme-destino .msg-link { color: #2c6fa6; text-decoration-color: rgba(44,111,166,0.4); }
+.panel--theme-destino .msg-link:hover { color: #1b5280; }
+.panel--theme-destino .bubble.user .msg-link { color: rgba(255,255,255,0.85); }
 
 /* Estado vacío */
-.panel--theme-destino .empty {
-  border-color: #cfe0f5;
-}
-.panel--theme-destino .empty-icon::after { content: "🌍"; } /* sobrescribe emoji */
+.panel--theme-destino .empty { border-color: #d4d8dc; }
 
 /* Typing dots */
-.panel--theme-destino .typing span { background: #1976D2; }
+.panel--theme-destino .typing span { background: #1b2228; }
 
 /* Composer */
 .panel--theme-destino .composer {
   background: #ffffff;
-  border-top: 1px solid #cfe0f5;
+  border-top: 1px solid #d4d8dc;
 }
 .panel--theme-destino .composer textarea {
-  background: #f0f6ff;
-  border-color: #cfe0f5;
-  border-radius: 22px; /* más redondeado, estilo chat moderno */
+  background: #f2f4f6;
+  border-color: #d4d8dc;
+  border-radius: 22px;
 }
 .panel--theme-destino .composer textarea:focus {
-  border-color: #1976D2;
+  border-color: #1b2228;
   background: #fff;
-  box-shadow: 0 0 0 3px rgba(25,118,210,0.1);
+  box-shadow: 0 0 0 3px rgba(27,34,40,0.1);
 }
 
-/* Botón enviar — circular como en la imagen */
+/* Botón enviar — circular */
 .panel--theme-destino .composer button {
-  background: #1976D2;
+  background: #1b2228;
   border-radius: 50%;
-  box-shadow: 0 3px 10px rgba(25,118,210,0.4);
+  box-shadow: 0 3px 10px rgba(27,34,40,0.35);
 }
 .panel--theme-destino .composer button:hover:not(:disabled) {
-  background: #1565C0;
-  box-shadow: 0 5px 16px rgba(25,118,210,0.5);
+  background: #131920;
+  box-shadow: 0 5px 16px rgba(27,34,40,0.45);
 }
 
 /* Hint */
 .panel--theme-destino .composer-hint {
   background: #ffffff;
-  color: #90a4c0;
+  color: #8a9199;
 }
 
 /* Launcher (si se usa fuera del embed) */
 .launcher--theme-destino {
-  background: #1976D2;
-  box-shadow: 0 4px 18px rgba(25,118,210,0.45);
+  background: #1b2228;
+  box-shadow: 0 4px 18px rgba(27,34,40,0.4);
 }
 .launcher--theme-destino:hover {
-  background: #1565C0;
-  box-shadow: 0 8px 28px rgba(25,118,210,0.55);
+  background: #131920;
+  box-shadow: 0 8px 28px rgba(27,34,40,0.5);
 }
