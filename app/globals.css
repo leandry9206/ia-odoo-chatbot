@@ -128,7 +128,7 @@ html, body {
   color: #fff;
 }
 
-.lang-flag         { font-size: 0.9rem; line-height: 1; }
+.lang-flag         { display: inline-flex; align-items: center; line-height: 1; }
 .lang-trigger-code { font-size: 0.68rem; font-weight: 700; }
 
 .lang-dropdown {
@@ -628,7 +628,7 @@ html, body {
   color: #fff;
 }
 
-.l-lang-flag { font-size: 0.9rem; line-height: 1; }
+.l-lang-flag { display: inline-flex; align-items: center; line-height: 1; }
 
 .l-lang-dropdown {
   position: absolute;

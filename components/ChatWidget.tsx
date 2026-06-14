@@ -3,15 +3,16 @@
 import { useChat } from "ai/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import FlagIcon from "./FlagIcon";
 
 // ── Idiomas ─────────────────────────────────────────────────────
 type Lang = "FR" | "ES" | "EN" | "DE";
 
-const LANGS: { code: Lang; flag: string; name: string }[] = [
-  { code: "FR", flag: "🇫🇷", name: "Français" },
-  { code: "ES", flag: "🇪🇸", name: "Español" },
-  { code: "EN", flag: "🇬🇧", name: "English" },
-  { code: "DE", flag: "🇩🇪", name: "Deutsch" },
+const LANGS: { code: Lang; name: string }[] = [
+  { code: "FR", name: "Français" },
+  { code: "ES", name: "Español" },
+  { code: "EN", name: "English" },
+  { code: "DE", name: "Deutsch" },
 ];
 
 const T: Record<Lang, {
@@ -211,9 +212,12 @@ export default function ChatWidget({
     try { localStorage.setItem(LS_KEY, String(until)); } catch {}
   }, []);
 
+  // Identidad del bot: el tema "destino" → Destino World; resto → Mercurio.
+  const bot = theme === "destino" ? "destino" : "mercurio";
+
   const { messages, input, handleInputChange, handleSubmit, status } = useChat({
     api: "/api/chat",
-    body: contexts && contexts.length > 0 ? { contexts } : undefined,
+    body: { bot, ...(contexts && contexts.length > 0 ? { contexts } : {}) },
     onError: (err) => {
       const msg = err.message ?? "";
       if (msg.startsWith("RATE_LIMIT:")) {
@@ -411,7 +415,7 @@ export default function ChatWidget({
                 aria-haspopup="listbox"
                 aria-expanded={langOpen}
               >
-                <span className="lang-flag">{currentLang.flag}</span>
+                <span className="lang-flag"><FlagIcon code={currentLang.code} /></span>
                 <span className="lang-trigger-code">{currentLang.code}</span>
                 <ChevronIcon open={langOpen} />
               </button>
@@ -426,7 +430,7 @@ export default function ChatWidget({
                       aria-selected={lang === l.code}
                       onClick={() => { setLang(l.code); setLangOpen(false); }}
                     >
-                      <span className="lang-flag">{l.flag}</span>
+                      <span className="lang-flag"><FlagIcon code={l.code} /></span>
                       <span className="lang-option-code">{l.code}</span>
                       {lang === l.code && (
                         <span className="lang-check"><CheckIcon /></span>

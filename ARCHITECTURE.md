@@ -44,8 +44,8 @@ components/HomeLanding.tsx→ /                       (landing: dos iframes side
 | `lib/vectorStore.ts` | Wrapper de Upstash Vector: `upsertChunks`, `query`, `resetIndex`. Tipos: `ChunkMetadata`, `Match` |
 | `lib/embeddings.ts` | `embed()` y `embedOne()` con Gemini `text-embedding-004` |
 | `lib/retrieval.ts` | `retrieve(question)` → embed → query → filtra por score → devuelve `contextBlock` |
-| `lib/prompt.ts` | `buildSystemPrompt(context)` → instrucciones + contexto RAG para el modelo |
-| `app/api/chat/route.ts` | Endpoint POST: recibe mensajes, llama `retrieve`, llama Groq (modelo de `lib/groq-config.ts`), stream de respuesta. Detecta 429 y devuelve `RATE_LIMIT:<segundos>` |
+| `lib/prompt.ts` | `buildSystemPrompt(context, bot)` → identidad por bot (`mercurio`/`destino`, en `IDENTITIES`) + reglas de tono humano (sin muletillas robóticas ni disclaimers de IA) + grounding RAG. Exporta `BotId` |
+| `app/api/chat/route.ts` | Endpoint POST: recibe `messages`, `contexts`, `bot`; llama `retrieve`, llama Groq (modelo de `lib/groq-config.ts`, `temperature 0.5`), stream de respuesta. Detecta 429 y devuelve `RATE_LIMIT:<segundos>` |
 | `app/api/status/route.ts` | Endpoint GET: lee el singleton; si no sabe (cold-start) hace **un** sondeo mínimo a Groq vía `fetch` directo (no SDK → status/body/headers deterministas), cacheado 60 s. Devuelve `{ available, retryAfter? }` |
 | `lib/groq-rate-limit.ts` | Singleton en memoria del rate-limit: `setRateLimit`, `getRateLimitStatus`, `needsProbe`, `markProbeOk` (caché de sondeo 60 s) |
 | `lib/groq-errors.ts` | Parseo de errores 429 de Groq: `parseGroqRetryTime` (lee `"try again in 12m4s"`) y `rateLimitSeconds` (filtra TPM, devuelve segundos de TPD). Compartido por `/api/chat` y `/api/status` |
@@ -53,7 +53,8 @@ components/HomeLanding.tsx→ /                       (landing: dos iframes side
 | `app/page.tsx` | Punto de entrada raíz — renderiza `<HomeLanding />` |
 | `components/HomeLanding.tsx` | **Landing page** (client): dos chatbots en iframes, selector de idioma para el home (FR/ES/EN/DE) |
 | `app/embed/page.tsx` | Página de embed mínima: lee `?contexts` y `?theme`, lee el singleton de rate-limit en el servidor y pasa `initialRateLimitSeconds` al widget (comprobación única a nivel de app) |
-| `components/ChatWidget.tsx` | Widget React del chat: combobox de idioma (FR/ES/EN/DE), temas odoo y destino. Comprobación de disponibilidad al montar (localStorage → `/api/status`). Indicador de estado con 3 modos (online/checking/waiting). Banner rate-limit rediseñado + countdown |
+| `components/ChatWidget.tsx` | Widget React del chat: combobox de idioma (FR/ES/EN/DE), temas odoo y destino. Envía `bot` (derivado del tema) al API. Comprobación de disponibilidad al montar (localStorage → `/api/status`). Indicador de estado con 3 modos (online/checking/waiting). Banner rate-limit rediseñado + countdown |
+| `components/FlagIcon.tsx` | Banderas en SVG inline (FR/ES/EN/DE). Sustituyen a los emojis de bandera, que Chrome en Windows no renderiza. Usado por `ChatWidget` y `HomeLanding` |
 | `app/globals.css` | Estilos globales: tokens CSS, widget (`.panel`, `.lang-*`), temas, landing (`.l-*`) |
 | `.github/workflows/reindex.yml` | Re-indexado nocturno (todas las fuentes) o manual por fuente |
 
@@ -218,6 +219,16 @@ npm run import --file data/backup-YYYY-MM-DD.json
 # Llama a upsertChunks() en el nuevo índice Upstash
 # También sirve para migrar a otro proveedor vectorial (Pinecone, Qdrant, pgvector…)
 ```
+
+---
+
+## Identidad y tono del agente
+
+`lib/prompt.ts` da al agente una **identidad por bot** (objeto `IDENTITIES`, claves `mercurio` / `destino`): nombre + descripción de la empresa. El widget envía `bot` (derivado del tema) → `/api/chat` → `buildSystemPrompt(context, bot)`. Esto evita las respuestas genéricas ("soy un asistente de una empresa") porque el agente conoce su nombre y a quién representa.
+
+El prompt impone además un **tono humano**: prohíbe muletillas robóticas ("no tengo información específica sobre…", "según mis datos"), disclaimers sobre limitaciones de IA, y mentir afirmando ser una persona de carne y hueso. `temperature` está en `0.5` para un tono más natural sin disparar invenciones. Los datos de negocio (precios, circuitos, políticas) siguen saliendo SOLO del CONTEXTO RAG.
+
+> ⚠️ Las descripciones de empresa en `IDENTITIES` son un borrador; ajustar con los datos reales de cada negocio.
 
 ---
 

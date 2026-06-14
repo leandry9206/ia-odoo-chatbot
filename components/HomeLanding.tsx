@@ -1,14 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import FlagIcon from "./FlagIcon";
 
 type Lang = "FR" | "ES" | "EN" | "DE";
 
-const LANGS: { code: Lang; flag: string }[] = [
-  { code: "FR", flag: "🇫🇷" },
-  { code: "ES", flag: "🇪🇸" },
-  { code: "EN", flag: "🇬🇧" },
-  { code: "DE", flag: "🇩🇪" },
+const LANGS: { code: Lang }[] = [
+  { code: "FR" },
+  { code: "ES" },
+  { code: "EN" },
+  { code: "DE" },
 ];
 
 const T: Record<Lang, {
@@ -123,7 +124,7 @@ export default function HomeLanding() {
             aria-haspopup="listbox"
             aria-expanded={isOpen}
           >
-            <span className="l-lang-flag">{current.flag}</span>
+            <span className="l-lang-flag"><FlagIcon code={current.code} /></span>
             <span>{current.code}</span>
             <ChevronIcon open={isOpen} />
           </button>
@@ -138,7 +139,7 @@ export default function HomeLanding() {
                   aria-selected={lang === l.code}
                   onClick={() => { setLang(l.code); setIsOpen(false); }}
                 >
-                  <span className="l-lang-flag">{l.flag}</span>
+                  <span className="l-lang-flag"><FlagIcon code={l.code} /></span>
                   <span>{l.code}</span>
                   {lang === l.code && (
                     <span className="l-lang-check"><CheckIcon /></span>

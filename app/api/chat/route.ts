@@ -1,7 +1,7 @@
 import { createGroq } from "@ai-sdk/groq";
 import { streamText, type CoreMessage } from "ai";
 import { retrieve } from "@/lib/retrieval";
-import { buildSystemPrompt } from "@/lib/prompt";
+import { buildSystemPrompt, type BotId } from "@/lib/prompt";
 import { setRateLimit } from "@/lib/groq-rate-limit";
 import { rateLimitSeconds } from "@/lib/groq-errors";
 import { GROQ_MODEL } from "@/lib/groq-config";
@@ -13,9 +13,10 @@ export const maxDuration = 30;
 
 export async function POST(req: Request) {
   try {
-    const { messages, contexts } = (await req.json()) as {
+    const { messages, contexts, bot } = (await req.json()) as {
       messages: CoreMessage[];
       contexts?: string[];
+      bot?: BotId;
     };
 
     const lastUser = [...messages].reverse().find((m) => m.role === "user");
@@ -35,9 +36,9 @@ export async function POST(req: Request) {
 
     const result = streamText({
       model: groq(GROQ_MODEL),
-      system: buildSystemPrompt(contextBlock),
+      system: buildSystemPrompt(contextBlock, bot),
       messages,
-      temperature: 0.2,
+      temperature: 0.5,
     });
 
     return result.toDataStreamResponse({
