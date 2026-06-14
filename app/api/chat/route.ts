@@ -25,13 +25,18 @@ export async function POST(req: Request) {
     const { contextBlock } = await retrieve(question, 5, contexts);
 
     const result = streamText({
-      model: google("gemini-2.0-flash"),
+      model: google("gemini-1.5-flash"),
       system: buildSystemPrompt(contextBlock),
       messages,
       temperature: 0.2,
     });
 
-    return result.toDataStreamResponse();
+    return result.toDataStreamResponse({
+      getErrorMessage: (err) => {
+        console.error("Error en stream Gemini:", err);
+        return "Error generando la respuesta. Inténtalo de nuevo.";
+      },
+    });
   } catch (err) {
     console.error("Error en /api/chat:", err);
     return new Response("Ocurrió un error procesando tu mensaje.", {
