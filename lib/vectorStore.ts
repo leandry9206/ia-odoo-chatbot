@@ -5,6 +5,7 @@ export interface ChunkMetadata {
   text: string;
   url: string;
   title: string;
+  [key: string]: unknown;
 }
 
 let _index: Index<ChunkMetadata> | null = null;
