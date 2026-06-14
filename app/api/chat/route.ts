@@ -21,8 +21,13 @@ export async function POST(req: Request) {
       return new Response("No se recibió ninguna pregunta.", { status: 400 });
     }
 
-    // Recuperar fragmentos del contexto solicitado (o de todos si no se especifica)
-    const { contextBlock } = await retrieve(question, 5, contexts);
+    // Recuperar fragmentos — si falla (Upstash, embeddings) continuamos sin contexto
+    let contextBlock = "";
+    try {
+      ({ contextBlock } = await retrieve(question, 5, contexts));
+    } catch (retrieveErr) {
+      console.error("Error en retrieve():", retrieveErr);
+    }
 
     const result = streamText({
       model: google("gemini-1.5-flash"),
