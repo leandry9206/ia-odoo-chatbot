@@ -1,10 +1,11 @@
 import { Index } from "@upstash/vector";
 
-// Metadatos que guardamos junto a cada fragmento, para citar la fuente.
 export interface ChunkMetadata {
   text: string;
   url: string;
   title: string;
+  source?: string;   // id de la fuente: 'mercurio', 'destino', ...
+  context?: string;  // etiqueta legible para el prompt del modelo
   [key: string]: unknown;
 }
 
@@ -27,7 +28,6 @@ export interface UpsertChunk {
   metadata: ChunkMetadata;
 }
 
-// Sube fragmentos en lotes (Upstash acepta arrays grandes, pero troceamos por seguridad).
 export async function upsertChunks(chunks: UpsertChunk[], batchSize = 100) {
   const index = getIndex();
   for (let i = 0; i < chunks.length; i += batchSize) {
@@ -36,7 +36,6 @@ export async function upsertChunks(chunks: UpsertChunk[], batchSize = 100) {
   }
 }
 
-// Vacía el índice antes de un re-indexado completo (opcional).
 export async function resetIndex() {
   const index = getIndex();
   await index.reset();
@@ -46,6 +45,8 @@ export interface Match {
   text: string;
   url: string;
   title: string;
+  source?: string;
+  context?: string;
   score: number;
 }
 
@@ -62,6 +63,8 @@ export async function query(vector: number[], topK = 5): Promise<Match[]> {
       text: r.metadata!.text,
       url: r.metadata!.url,
       title: r.metadata!.title,
+      source: r.metadata!.source,
+      context: r.metadata!.context,
       score: r.score,
     }));
 }

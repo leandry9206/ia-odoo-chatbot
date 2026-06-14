@@ -1,12 +1,13 @@
 // Parte el texto en fragmentos, genera embeddings con Gemini y los sube a Upstash.
-// Uso: npm run ingest   (requiere data/pages.json del paso anterior)
+// Uso: npm run ingest                    → indexa todos los data/pages-*.json
+//      npm run ingest -- --source=destino → solo una fuente (sin reset del índice)
 
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import { embed } from "../lib/embeddings";
 import { upsertChunks, resetIndex, type UpsertChunk } from "../lib/vectorStore";
 
-// Load .env.local (not loaded automatically outside Next.js)
+// Load .env.local
 try {
   const env = readFileSync(".env.local", "utf-8");
   for (const line of env.split("\n")) {
@@ -17,16 +18,18 @@ try {
   }
 } catch { /* file missing is fine */ }
 
-const CHUNK_WORDS = 350; // tamaño de cada fragmento
-const OVERLAP_WORDS = 60; // solapamiento para no cortar ideas a la mitad
-const EMBED_BATCH = 20; // textos por lote (free tier: 100 req/min)
-const BATCH_DELAY_MS = 30_000; // pausa entre lotes (~2 lotes/min = 40 req/min)
-const RATE_LIMIT_WAIT_MS = 65_000; // espera al recibir 429 para resetear la ventana
+const CHUNK_WORDS = 350;
+const OVERLAP_WORDS = 60;
+const EMBED_BATCH = 20;
+const BATCH_DELAY_MS = 30_000;
+const RATE_LIMIT_WAIT_MS = 65_000;
 
 interface Page {
   url: string;
   title: string;
   text: string;
+  source: string;
+  context: string;
 }
 
 function chunkText(text: string): string[] {
@@ -40,31 +43,75 @@ function chunkText(text: string): string[] {
   return chunks;
 }
 
+async function loadPagesFiles(sourceFilter?: string): Promise<Page[]> {
+  const files = await readdir("data");
+  const pageFiles = files.filter((f) => {
+    if (!f.startsWith("pages-") || !f.endsWith(".json")) return false;
+    if (sourceFilter) return f === `pages-${sourceFilter}.json`;
+    return true;
+  });
+
+  if (pageFiles.length === 0) {
+    const hint = sourceFilter
+      ? `data/pages-${sourceFilter}.json`
+      : "data/pages-<fuente>.json";
+    throw new Error(`No se encontraron archivos de páginas. Ejecuta primero: npm run crawl. Esperaba: ${hint}`);
+  }
+
+  const allPages: Page[] = [];
+  for (const file of pageFiles) {
+    const raw = await readFile(`data/${file}`, "utf-8");
+    const pages = JSON.parse(raw) as Page[];
+    // Compatibilidad con formato antiguo (sin source/context)
+    const sourceId = file.replace("pages-", "").replace(".json", "");
+    for (const p of pages) {
+      if (!p.source) p.source = sourceId;
+      if (!p.context) p.context = sourceId;
+    }
+    allPages.push(...pages);
+    console.log(`Leído ${file}: ${pages.length} páginas (contexto: ${pages[0]?.context ?? sourceId})`);
+  }
+  return allPages;
+}
+
 async function main() {
-  const raw = await readFile("data/pages.json", "utf-8");
-  const pages = JSON.parse(raw) as Page[];
-  console.log(`Leídas ${pages.length} páginas.`);
+  const sourceArg = process.argv.find((a) => a.startsWith("--source="))?.split("=")[1];
 
-  // Vaciar el índice para un re-indexado limpio
-  console.log("Vaciando el índice...");
-  await resetIndex();
+  const pages = await loadPagesFiles(sourceArg);
+  console.log(`Total páginas a indexar: ${pages.length}`);
 
-  // 1. Construir todos los fragmentos con su metadata
-  type Pending = { id: string; text: string; url: string; title: string };
+  // Con --source solo se re-indexa una fuente; sin él, reset completo
+  if (!sourceArg) {
+    console.log("Vaciando el índice completo...");
+    await resetIndex();
+  } else {
+    console.log(`Re-indexando solo la fuente "${sourceArg}" (sin reset global).`);
+  }
+
+  type Pending = {
+    id: string;
+    text: string;
+    url: string;
+    title: string;
+    source: string;
+    context: string;
+  };
+
   const pending: Pending[] = [];
   pages.forEach((page, p) => {
     chunkText(page.text).forEach((chunk, c) => {
       pending.push({
-        id: `p${p}-c${c}`,
+        id: `${page.source}-p${p}-c${c}`,
         text: chunk,
         url: page.url,
         title: page.title,
+        source: page.source,
+        context: page.context,
       });
     });
   });
   console.log(`Total de fragmentos: ${pending.length}`);
 
-  // 2. Embeber y subir por lotes
   const totalBatches = Math.ceil(pending.length / EMBED_BATCH);
   for (let i = 0; i < pending.length; i += EMBED_BATCH) {
     const batchNum = Math.floor(i / EMBED_BATCH) + 1;
@@ -85,7 +132,13 @@ async function main() {
     const toUpsert: UpsertChunk[] = batch.map((b, j) => ({
       id: b.id,
       vector: vectors[j],
-      metadata: { text: b.text, url: b.url, title: b.title },
+      metadata: {
+        text: b.text,
+        url: b.url,
+        title: b.title,
+        source: b.source,
+        context: b.context,
+      },
     }));
     await upsertChunks(toUpsert);
     console.log(`  Lote ${batchNum}/${totalBatches} — subidos ${Math.min(i + EMBED_BATCH, pending.length)}/${pending.length}`);

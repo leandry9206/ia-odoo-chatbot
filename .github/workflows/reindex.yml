@@ -1,10 +1,16 @@
-name: Re-indexar web Odoo
+name: Re-indexar todas las fuentes
 
 # Corre cada noche a las 3:00 UTC y también de forma manual desde la pestaña Actions.
+# Para re-indexar solo una fuente: workflow_dispatch con input source=mercurio|destino
 on:
   schedule:
     - cron: "0 3 * * *"
   workflow_dispatch:
+    inputs:
+      source:
+        description: "Fuente a re-indexar (vacío = todas)"
+        required: false
+        default: ""
 
 jobs:
   reindex:
@@ -19,10 +25,22 @@ jobs:
 
       - run: npm ci
 
-      - name: Crawl + Ingest
+      - name: Crawl + Ingest (todas las fuentes)
+        if: ${{ github.event.inputs.source == '' }}
         env:
           ODOO_SITE_URL: ${{ secrets.ODOO_SITE_URL }}
+          DESTINO_SITE_URL: ${{ secrets.DESTINO_SITE_URL }}
           GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
           UPSTASH_VECTOR_REST_URL: ${{ secrets.UPSTASH_VECTOR_REST_URL }}
           UPSTASH_VECTOR_REST_TOKEN: ${{ secrets.UPSTASH_VECTOR_REST_TOKEN }}
         run: npm run reindex
+
+      - name: Crawl + Ingest (fuente específica)
+        if: ${{ github.event.inputs.source != '' }}
+        env:
+          ODOO_SITE_URL: ${{ secrets.ODOO_SITE_URL }}
+          DESTINO_SITE_URL: ${{ secrets.DESTINO_SITE_URL }}
+          GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+          UPSTASH_VECTOR_REST_URL: ${{ secrets.UPSTASH_VECTOR_REST_URL }}
+          UPSTASH_VECTOR_REST_TOKEN: ${{ secrets.UPSTASH_VECTOR_REST_TOKEN }}
+        run: npm run reindex:${{ github.event.inputs.source }}
