@@ -1,5 +1,9 @@
 # Instrucciones del proyecto para Claude
 
+## Inicio de sesión
+
+Al comenzar cualquier conversación en este proyecto, lee primero **`architecture.MD`** para tener contexto completo del stack, archivos clave y flujo de datos antes de responder o hacer cambios.
+
 ## Actualizaciones de documentación
 
 Después de **cualquier cambio de código**, actualiza siempre sin que se te pida:
