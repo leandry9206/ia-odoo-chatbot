@@ -338,3 +338,111 @@ html, body {
 @media (prefers-reduced-motion: reduce) {
   .panel, .typing span, .launcher { animation: none !important; transition: none !important; }
 }
+
+/* ════════════════════════════════════════════════════════
+   TEMA: DESTINO  (azul degradado, ola, botón circular)
+   Activar: /embed?theme=destino  o  prop theme="destino"
+   ════════════════════════════════════════════════════════ */
+
+.panel--theme-destino .lang-bar {
+  background: linear-gradient(90deg, #1354a3 0%, #1976D2 100%);
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.panel--theme-destino .lang-btn--active {
+  color: #1354a3;
+}
+
+.panel--theme-destino .panel-head {
+  background: linear-gradient(135deg, #1354a3 0%, #1976D2 60%, #42A5F5 100%);
+  padding-bottom: 18px;
+}
+
+/* Ola SVG entre header y mensajes */
+.dest-wave {
+  flex-shrink: 0;
+  height: 22px;
+  overflow: hidden;
+  background: #f0f6ff;
+  margin-top: -1px; /* soldar con el header */
+}
+.dest-wave svg { width: 100%; height: 100%; display: block; }
+
+/* Área de mensajes */
+.panel--theme-destino .messages {
+  background: #f0f6ff;
+}
+
+/* Burbujas */
+.panel--theme-destino .bubble.assistant {
+  background: #ffffff;
+  border-color: #cfe0f5;
+  box-shadow: 0 1px 4px rgba(25,118,210,0.08);
+}
+.panel--theme-destino .bubble.user {
+  background: #1976D2;
+  color: #ffffff;
+}
+
+/* Avatar del bot */
+.panel--theme-destino .bubble-avatar {
+  background: #daeafe;
+  border-color: #b3d4f5;
+  color: #1976D2;
+}
+
+/* Links */
+.panel--theme-destino .msg-link { color: #1565C0; text-decoration-color: rgba(21,101,192,0.4); }
+.panel--theme-destino .msg-link:hover { color: #0d47a1; }
+.panel--theme-destino .bubble.user .msg-link { color: rgba(255,255,255,0.88); }
+
+/* Estado vacío */
+.panel--theme-destino .empty {
+  border-color: #cfe0f5;
+}
+.panel--theme-destino .empty-icon::after { content: "🌍"; } /* sobrescribe emoji */
+
+/* Typing dots */
+.panel--theme-destino .typing span { background: #1976D2; }
+
+/* Composer */
+.panel--theme-destino .composer {
+  background: #ffffff;
+  border-top: 1px solid #cfe0f5;
+}
+.panel--theme-destino .composer textarea {
+  background: #f0f6ff;
+  border-color: #cfe0f5;
+  border-radius: 22px; /* más redondeado, estilo chat moderno */
+}
+.panel--theme-destino .composer textarea:focus {
+  border-color: #1976D2;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(25,118,210,0.1);
+}
+
+/* Botón enviar — circular como en la imagen */
+.panel--theme-destino .composer button {
+  background: #1976D2;
+  border-radius: 50%;
+  box-shadow: 0 3px 10px rgba(25,118,210,0.4);
+}
+.panel--theme-destino .composer button:hover:not(:disabled) {
+  background: #1565C0;
+  box-shadow: 0 5px 16px rgba(25,118,210,0.5);
+}
+
+/* Hint */
+.panel--theme-destino .composer-hint {
+  background: #ffffff;
+  color: #90a4c0;
+}
+
+/* Launcher (si se usa fuera del embed) */
+.launcher--theme-destino {
+  background: #1976D2;
+  box-shadow: 0 4px 18px rgba(25,118,210,0.45);
+}
+.launcher--theme-destino:hover {
+  background: #1565C0;
+  box-shadow: 0 8px 28px rgba(25,118,210,0.55);
+}

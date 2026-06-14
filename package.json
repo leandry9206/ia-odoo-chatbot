@@ -9,8 +9,14 @@
     "start": "next start",
     "lint": "next lint",
     "crawl": "tsx scripts/crawl.ts",
+    "crawl:mercurio": "tsx scripts/crawl.ts -- --source=mercurio",
+    "crawl:destino": "tsx scripts/crawl.ts -- --source=destino",
     "ingest": "tsx scripts/ingest.ts",
-    "reindex": "npm run crawl && npm run ingest"
+    "ingest:mercurio": "tsx scripts/ingest.ts -- --source=mercurio",
+    "ingest:destino": "tsx scripts/ingest.ts -- --source=destino",
+    "reindex": "npm run crawl && npm run ingest",
+    "reindex:mercurio": "npm run crawl:mercurio && npm run ingest:mercurio",
+    "reindex:destino": "npm run crawl:destino && npm run ingest:destino"
   },
   "dependencies": {
     "@ai-sdk/google": "^1.0.0",
