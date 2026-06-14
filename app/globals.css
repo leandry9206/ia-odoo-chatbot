@@ -189,9 +189,8 @@ html, body {
   display: flex; flex-direction: column; gap: 8px;
   background: var(--bg);
 }
-.messages::-webkit-scrollbar { width: 4px; }
-.messages::-webkit-scrollbar-track { background: transparent; }
-.messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.messages { scrollbar-width: none; }
+.messages::-webkit-scrollbar { display: none; }
 
 /* ── Estado vacío ───────────────────────────────────── */
 .empty {
@@ -312,7 +311,9 @@ html, body {
   background: var(--bg);
   transition: border-color 0.15s, background 0.15s;
   overflow-y: auto;
+  scrollbar-width: none;
 }
+.composer textarea::-webkit-scrollbar { display: none; }
 .composer textarea:focus {
   border-color: var(--accent);
   background: var(--surface);

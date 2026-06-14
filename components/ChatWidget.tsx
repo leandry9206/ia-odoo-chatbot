@@ -62,7 +62,13 @@ const T: Record<Lang, {
   },
 };
 
-// ── Helpers ─────────────────────────────────────────────────────
+// Descripción del bot en el estado vacío — específica por tema y idioma
+const DESTINO_EMPTY_BODY: Record<Lang, string> = {
+  FR: "Posez-moi des questions sur n'importe quelle information ou contenu de notre site. Je peux aussi vous résumer ou vous expliquer ce dont vous avez besoin.",
+  ES: "Pregúntame sobre cualquier información o contenido de nuestra web, además si quieres puedo resumirte lo que necesites o explicártelo.",
+  EN: "Ask me about any information or content on our website. I can also summarize or explain whatever you need.",
+  DE: "Fragen Sie mich zu beliebigen Informationen oder Inhalten unserer Website. Ich kann Ihnen auch gerne zusammenfassen oder erklären, was Sie benötigen.",
+};
 function BubbleContent({ text, isUser }: { text: string; isUser: boolean }) {
   if (isUser) return <>{text}</>;
   return (
@@ -226,7 +232,7 @@ export default function ChatWidget({
               <div className="empty">
                 <span className="empty-icon">🤖</span>
                 <strong>{tr.emptyTitle}</strong>
-                {tr.emptyBody}
+                {theme === "destino" ? DESTINO_EMPTY_BODY[lang] : tr.emptyBody}
               </div>
             )}
 
