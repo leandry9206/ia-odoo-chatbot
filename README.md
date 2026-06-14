@@ -1,96 +1,127 @@
-# Chatbot RAG para web Odoo (versión gratuita con Gemini)
+# ia-odoo-chatbot
 
-Asistente que **aprende del contenido público de tu web Odoo** y responde preguntas
-usando **Google Gemini** (free tier). No toca tu base de datos de Odoo: solo lee tu
-sitio vía sitemap. Desplegable **online en Vercel** desde **GitHub**, sin pagar nada.
+Plataforma de **dos chatbots RAG** (Retrieval-Augmented Generation) que indexan webs externas (Odoo + Ghost) y responden con **Google Gemini** en streaming. Desplegable en Vercel de forma completamente gratuita.
 
-## Cómo funciona
+## Demo
 
-```
-Odoo (web pública)
-   │  scripts/crawl.ts  → lee /sitemap.xml y limpia el HTML
-   ▼  data/pages.json
-   │  scripts/ingest.ts → trocea, genera embeddings (Gemini) y sube a Upstash
-   ▼
-Upstash Vector  ◄── base vectorial (búsqueda por similitud)
-   ▲
-   │  /api/chat → recupera fragmentos + pregunta a Gemini (streaming)
-   ▼
-Next.js en Vercel  →  ChatWidget (flotante)
-```
+| Ruta | Descripción |
+|---|---|
+| `/` | Landing page — muestra los dos chatbots embebidos lado a lado |
+| `/embed` | Mercurio Asistente — todos los contextos, tema morado |
+| `/embed?contexts=destino&theme=destino` | Destino World — solo contexto Destino, tema oscuro |
 
-El **crawleo/indexado** corre aparte (en tu máquina o por GitHub Actions), nunca dentro
-de Vercel. La app desplegada solo hace la parte rápida: recuperar + responder.
-
-## Stack (todo en free tier)
+## Stack
 
 - **Next.js 15** (App Router, TypeScript)
 - **Google Gemini** vía `@ai-sdk/google`
   - Chat: `gemini-2.5-flash`
-  - Embeddings: `gemini-embedding-001` (recortado a 768 dimensiones)
-- **Upstash Vector** como base vectorial serverless
-- **Vercel** para el hosting
-- **GitHub Actions** para re-indexar en cron
+  - Embeddings: `gemini-embedding-001` (768 dimensiones, COSINE)
+- **Upstash Vector** — base vectorial serverless
+- **Vercel** — hosting
+- **GitHub Actions** — re-indexado en cron (nightly)
 
-## 1. Requisitos: 2 cuentas gratis (sin tarjeta)
+## Fuentes de datos
 
-1. **Google AI Studio** → https://aistudio.google.com/apikey → *Create API key*.
-   Esta única key sirve para el chat y para los embeddings.
-2. **Upstash** → https://console.upstash.com → *Vector* → *Create Index* con:
-   - **Dimensions: 768**
-   - **Metric: COSINE**
-   - copia la *REST URL* y el *REST TOKEN*.
+| id | Tipo web | Contexto en el RAG |
+|---|---|---|
+| `mercurio` | Odoo (`ODOO_SITE_URL`) | Información general de la empresa |
+| `destino` | Ghost (`DESTINO_SITE_URL`) | Metodología del receptivo y experiencias de viaje |
 
-> Límites del free tier de Gemini: ~10 peticiones/min y ~1.500/día en gemini-2.5-flash.
-> De sobra para uso personal. Los embeddings tienen su propia cuota diaria, así que
-> re-indexa solo cuando cambie tu web (no en cada arranque).
+## Multiidioma
 
-## 2. Instalación local
+Ambas interfaces soportan **FR · ES · EN · DE** de forma independiente.
+
+- **Landing page** (`/`): selector de pills en la esquina superior derecha. Idioma por defecto: **FR**.
+- **Widget de chat** (`/embed`): combobox desplegable en la barra superior de cada chat.
+
+Los textos de la UI cambian con el idioma seleccionado. El modelo responde en el idioma de la pregunta del usuario.
+
+---
+
+## Instalación local
+
+### 1. Requisitos previos (cuentas gratuitas, sin tarjeta)
+
+1. **Google AI Studio** → [aistudio.google.com/apikey](https://aistudio.google.com/apikey) → *Create API key*
+2. **Upstash** → [console.upstash.com](https://console.upstash.com) → *Vector* → *Create Index*
+   - Dimensions: **768** · Metric: **COSINE**
+   - Copia la *REST URL* y el *REST TOKEN*
+
+### 2. Variables de entorno
+
+```bash
+cp .env.example .env.local
+```
+
+```env
+GOOGLE_GENERATIVE_AI_API_KEY=   # Chat + embeddings (misma key)
+UPSTASH_VECTOR_REST_URL=        # Endpoint Upstash Vector
+UPSTASH_VECTOR_REST_TOKEN=      # Token Upstash Vector
+ODOO_SITE_URL=                  # URL base de tu web Odoo
+DESTINO_SITE_URL=               # URL base de Destino (default: https://destino-world.fr)
+```
+
+### 3. Instalar dependencias
 
 ```bash
 npm install
-cp .env.example .env.local   # rellena GOOGLE_GENERATIVE_AI_API_KEY, Upstash y ODOO_SITE_URL
 ```
 
-## 3. Indexar tu web (una vez)
+### 4. Indexar las fuentes (una vez)
 
 ```bash
-npm run crawl    # descarga y limpia las páginas → data/pages.json
-npm run ingest   # embeddings + subida a Upstash
+npm run reindex              # Todas las fuentes
+npm run reindex:mercurio     # Solo Mercurio
+npm run reindex:destino      # Solo Destino
 ```
 
-## 4. Probar en local
+### 5. Arrancar en desarrollo
 
 ```bash
-npm run dev      # http://localhost:3000
+npm run dev   # http://localhost:3000
 ```
 
-## 5. Ponerlo ONLINE en Vercel (gratis)
+---
 
-1. Sube el proyecto a un repo de **GitHub**:
-   ```bash
-   git init
-   git add .
-   git commit -m "Chatbot RAG Odoo con Gemini"
-   git branch -M main
-   git remote add origin https://github.com/TU-USUARIO/odoo-chatbot.git
-   git push -u origin main
-   ```
-2. En **Vercel** → *Add New Project* → importa el repo (detecta Next.js solo).
-3. En *Settings → Environment Variables* añade:
-   `GOOGLE_GENERATIVE_AI_API_KEY`, `UPSTASH_VECTOR_REST_URL`, `UPSTASH_VECTOR_REST_TOKEN`.
-4. *Deploy*. Tendrás una URL pública (`https://tu-proyecto.vercel.app`) para probar
-   el chatbot desde cualquier dispositivo. Cada `git push` redespliega.
+## Despliegue en Vercel (gratis)
 
-## 6. Re-indexar automáticamente (GitHub Actions)
+1. Sube el proyecto a GitHub
+2. En Vercel → *Add New Project* → importa el repo (detecta Next.js automáticamente)
+3. En *Settings → Environment Variables* añade las 5 variables del `.env.local`
+4. *Deploy* → tendrás URL pública. Cada `git push` redespliega
 
-En tu repo → *Settings → Secrets and variables → Actions*, añade los secretos:
-`ODOO_SITE_URL`, `GOOGLE_GENERATIVE_AI_API_KEY`, `UPSTASH_VECTOR_REST_URL`,
-`UPSTASH_VECTOR_REST_TOKEN`.
+---
 
-El workflow `.github/workflows/reindex.yml` re-indexa cada noche (3:00 UTC) y a mano
-desde la pestaña *Actions → Run workflow*. **Córrelo una vez al inicio** para el
-indexado inicial (o hazlo en local con `npm run ingest`).
+## Re-indexado automático (GitHub Actions)
+
+En *Settings → Secrets and variables → Actions* del repo, añade los mismos secretos del `.env.local`.
+
+El workflow `.github/workflows/reindex.yml` re-indexa cada noche (3:00 UTC). Para re-indexar a mano: *Actions → "Re-indexar todas las fuentes" → Run workflow*.
+
+---
+
+## Integrar en una web externa
+
+Añade un `<iframe>` apuntando a tu dominio:
+
+```html
+<!-- Mercurio (todos los contextos, tema morado) -->
+<iframe src="https://tu-dominio.vercel.app/embed"
+        style="width:400px;height:580px;border:none;"></iframe>
+
+<!-- Destino (solo su contexto, tema oscuro) -->
+<iframe src="https://tu-dominio.vercel.app/embed?contexts=destino&theme=destino"
+        style="width:400px;height:580px;border:none;"></iframe>
+```
+
+Parámetros de URL disponibles en `/embed`:
+
+| Parámetro | Valores | Efecto |
+|---|---|---|
+| `contexts` | `mercurio`, `destino`, `mercurio,destino` | Filtra la búsqueda vectorial a esas fuentes |
+| `theme` | `odoo` (defecto), `destino` | Aplica el tema visual del chatbot |
+
+---
 
 ## Ajustes útiles
 
@@ -101,13 +132,9 @@ indexado inicial (o hazlo en local con `npm run ingest`).
 | Tamaño de los fragmentos | `scripts/ingest.ts` (`CHUNK_WORDS`, `OVERLAP_WORDS`) |
 | Modelo de chat de Gemini | `app/api/chat/route.ts` |
 | Modelo/dimensiones de embeddings | `lib/embeddings.ts` (`EMBED_DIMS`) |
+| Añadir nueva fuente de datos | `scripts/sources.config.ts` → nuevo entry → `npm run reindex` |
 | Colores y diseño del widget | `app/globals.css` |
+| Textos e idiomas del widget | `components/ChatWidget.tsx` → objeto `T` |
+| Textos e idiomas de la landing | `components/HomeLanding.tsx` → objeto `T` |
 
-> Si cambias `EMBED_DIMS`, recrea el índice de Upstash con las mismas dimensiones
-> y vuelve a indexar.
-
-## ¿Y si algún día quieres más calidad?
-
-La arquitectura es la misma para cualquier modelo. Para volver a Claude, instala
-`@ai-sdk/anthropic`, pon `ANTHROPIC_API_KEY` y cambia el modelo en
-`app/api/chat/route.ts`. Nada más se toca.
+> Si cambias `EMBED_DIMS`, recrea el índice de Upstash con las mismas dimensiones y vuelve a indexar.

@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Asistente · Tu Empresa",
-  description: "Chatbot de atención entrenado con la web de la empresa.",
+  title: "Agent de support basé sur l'IA",
+  description: "Chatbot de service client pour les agences de voyages réceptives.",
 };
 
 export default function RootLayout({

@@ -4,14 +4,14 @@ import { useChat } from "ai/react";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 
-// ── Traducciones ────────────────────────────────────────────────
+// ── Idiomas ─────────────────────────────────────────────────────
 type Lang = "FR" | "ES" | "EN" | "DE";
 
-const LANGS: { code: Lang; flag: string; label: string }[] = [
-  { code: "FR", flag: "🇫🇷", label: "FR" },
-  { code: "ES", flag: "🇪🇸", label: "ES" },
-  { code: "EN", flag: "🇬🇧", label: "EN" },
-  { code: "DE", flag: "🇩🇪", label: "DE" },
+const LANGS: { code: Lang; flag: string; name: string }[] = [
+  { code: "FR", flag: "🇫🇷", name: "Français" },
+  { code: "ES", flag: "🇪🇸", name: "Español" },
+  { code: "EN", flag: "🇬🇧", name: "English" },
+  { code: "DE", flag: "🇩🇪", name: "Deutsch" },
 ];
 
 const T: Record<Lang, {
@@ -62,71 +62,65 @@ const T: Record<Lang, {
   },
 };
 
-// Descripción del bot en el estado vacío — específica por tema y idioma
 const DESTINO_EMPTY_BODY: Record<Lang, string> = {
   FR: "Posez-moi des questions sur n'importe quelle information ou contenu de notre site. Je peux aussi vous résumer ou vous expliquer ce dont vous avez besoin.",
   ES: "Pregúntame sobre cualquier información o contenido de nuestra web, además si quieres puedo resumirte lo que necesites o explicártelo.",
   EN: "Ask me about any information or content on our website. I can also summarize or explain whatever you need.",
   DE: "Fragen Sie mich zu beliebigen Informationen oder Inhalten unserer Website. Ich kann Ihnen auch gerne zusammenfassen oder erklären, was Sie benötigen.",
 };
+
+// ── Markdown ─────────────────────────────────────────────────────
 function BubbleContent({ text, isUser }: { text: string; isUser: boolean }) {
   if (isUser) return <>{text}</>;
   if (!text) return null;
-  try { return (
-    <ReactMarkdown
-      components={{
-        a: ({ href, children }) => (
-          <a href={href} target="_blank" rel="noopener noreferrer" className="msg-link">
-            {children}
-          </a>
-        ),
-        // Evitar que <p> añada márgenes extra en el primer/último elemento
-        p: ({ children }) => <p className="md-p">{children}</p>,
-        ul: ({ children }) => <ul className="md-ul">{children}</ul>,
-        ol: ({ children }) => <ol className="md-ol">{children}</ol>,
-        li: ({ children }) => <li className="md-li">{children}</li>,
-        code: ({ children }) => <code className="md-code">{children}</code>,
-      }}
-    >
-      {text}
-    </ReactMarkdown>
-  ); } catch { return <>{text}</>; }
+  try {
+    return (
+      <ReactMarkdown
+        components={{
+          a: ({ href, children }) => (
+            <a href={href} target="_blank" rel="noopener noreferrer" className="msg-link">
+              {children}
+            </a>
+          ),
+          p:    ({ children }) => <p className="md-p">{children}</p>,
+          ul:   ({ children }) => <ul className="md-ul">{children}</ul>,
+          ol:   ({ children }) => <ol className="md-ol">{children}</ol>,
+          li:   ({ children }) => <li className="md-li">{children}</li>,
+          code: ({ children }) => <code className="md-code">{children}</code>,
+        }}
+      >
+        {text}
+      </ReactMarkdown>
+    );
+  } catch { return <>{text}</>; }
 }
 
-// ── Welcome icons (estado vacío) ────────────────────────────────
+// ── Welcome icons ────────────────────────────────────────────────
 const MercurioWelcomeIcon = () => (
   <svg width="58" height="58" viewBox="0 0 58 58" fill="none" aria-hidden="true">
     <circle cx="29" cy="29" r="29" fill="#f3ecf1"/>
-    {/* Burbuja de chat */}
-    <path d="M13 20c0-2.8 2.2-5 5-5h22c2.8 0 5 2.2 5 5v12c0 2.8-2.2 5-5 5H24l-7 6v-6a5 5 0 0 1-4-5V20z" fill="#875A7B"/>
-    {/* Puntos dentro */}
+    <path d="M13 20c0-2.8 2.2-5 5-5h22c2.8 0 5 2.2 5 5v12c0 2.8-2.2 5-5 5H24l-7 6v-6a5 5 0 0 1-4-5V20z" fill="#5f5e97"/>
     <circle cx="21" cy="26" r="2" fill="white"/>
     <circle cx="29" cy="26" r="2" fill="white"/>
     <circle cx="37" cy="26" r="2" fill="white"/>
-    {/* Destello superior derecha */}
-    <path d="M44 10l1.2 3.6 3.8 1.2-3.8 1.2L44 19.6l-1.2-3.6L39 14.8l3.8-1.2L44 10z" fill="#875A7B" opacity="0.55"/>
+    <path d="M44 10l1.2 3.6 3.8 1.2-3.8 1.2L44 19.6l-1.2-3.6L39 14.8l3.8-1.2L44 10z" fill="#5f5e97" opacity="0.55"/>
   </svg>
 );
 
 const DestinoWelcomeIcon = () => (
   <svg width="58" height="58" viewBox="0 0 58 58" fill="none" aria-hidden="true">
     <circle cx="29" cy="29" r="29" fill="rgba(27,34,40,0.08)"/>
-    {/* Globo terráqueo */}
     <circle cx="29" cy="29" r="16" stroke="#1b2228" strokeWidth="2"/>
-    {/* Meridianos verticales */}
     <ellipse cx="29" cy="29" rx="6.5" ry="16" stroke="#1b2228" strokeWidth="1.5" fill="none"/>
-    {/* Ecuador */}
     <path d="M13 29h32" stroke="#1b2228" strokeWidth="1.5"/>
-    {/* Paralelos */}
     <path d="M15.5 22c3.6-1.4 7.7-2.2 13.5-2.2s9.9.8 13.5 2.2" stroke="#1b2228" strokeWidth="1" strokeLinecap="round" opacity="0.4"/>
     <path d="M15.5 36c3.6 1.4 7.7 2.2 13.5 2.2s9.9-.8 13.5-2.2" stroke="#1b2228" strokeWidth="1" strokeLinecap="round" opacity="0.4"/>
-    {/* Pin de ubicación encima */}
     <circle cx="29" cy="16" r="3" fill="#1b2228"/>
     <path d="M29 19v4" stroke="#1b2228" strokeWidth="2" strokeLinecap="round"/>
   </svg>
 );
 
-// ── Icons ───────────────────────────────────────────────────────
+// ── Icons ─────────────────────────────────────────────────────────
 const BotIcon = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <rect x="3" y="11" width="18" height="10" rx="2"/>
@@ -151,7 +145,24 @@ const SendIcon = () => (
   </svg>
 );
 
-// ── Component ───────────────────────────────────────────────────
+const ChevronIcon = ({ open }: { open: boolean }) => (
+  <svg
+    width="13" height="13" viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+    style={{ transition: "transform 0.2s ease", transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
+    aria-hidden="true"
+  >
+    <path d="M6 9l6 6 6-6"/>
+  </svg>
+);
+
+const CheckIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M20 6L9 17l-5-5"/>
+  </svg>
+);
+
+// ── Componente principal ──────────────────────────────────────────
 export default function ChatWidget({
   alwaysOpen = false,
   contexts,
@@ -161,28 +172,43 @@ export default function ChatWidget({
   contexts?: string[];
   theme?: "odoo" | "destino";
 }) {
-  const [open, setOpen] = useState(alwaysOpen);
-  const [lang, setLang] = useState<Lang>("FR");
+  const [open, setOpen]         = useState(alwaysOpen);
+  const [lang, setLang]         = useState<Lang>("FR");
+  const [langOpen, setLangOpen] = useState(false);
   const tr = T[lang];
 
   const { messages, input, handleInputChange, handleSubmit, status } = useChat({
     api: "/api/chat",
     body: contexts && contexts.length > 0 ? { contexts } : undefined,
   });
-  const scrollRef   = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const formRef     = useRef<HTMLFormElement>(null);
-  const isLoading   = status === "submitted" || status === "streaming";
 
+  const scrollRef    = useRef<HTMLDivElement>(null);
+  const textareaRef  = useRef<HTMLTextAreaElement>(null);
+  const formRef      = useRef<HTMLFormElement>(null);
+  const langDropRef  = useRef<HTMLDivElement>(null);
+  const isLoading    = status === "submitted" || status === "streaming";
+
+  // scroll al final al recibir mensajes
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, isLoading]);
 
+  // reset altura del textarea al vaciar
   useEffect(() => {
     if (!input && textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
   }, [input]);
+
+  // cerrar dropdown al hacer clic fuera
+  useEffect(() => {
+    if (!langOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (!langDropRef.current?.contains(e.target as Node)) setLangOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [langOpen]);
 
   const onInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     handleInputChange(e);
@@ -198,6 +224,8 @@ export default function ChatWidget({
     }
   };
 
+  const currentLang = LANGS.find((l) => l.code === lang)!;
+
   return (
     <>
       {open && (
@@ -211,22 +239,43 @@ export default function ChatWidget({
           aria-label={tr.name}
         >
 
-          {/* Selector de idioma — barra superior */}
+          {/* ── Selector de idioma (combobox) ── */}
           <div className="lang-bar">
-            {LANGS.map((l) => (
+            <div className="lang-combobox" ref={langDropRef}>
               <button
-                key={l.code}
-                className={`lang-btn${lang === l.code ? " lang-btn--active" : ""}`}
-                onClick={() => setLang(l.code)}
-                aria-label={l.label}
+                className="lang-trigger"
+                onClick={() => setLangOpen((o) => !o)}
+                aria-haspopup="listbox"
+                aria-expanded={langOpen}
               >
-                <span className="lang-flag">{l.flag}</span>
-                <span className="lang-code">{l.label}</span>
+                <span className="lang-flag">{currentLang.flag}</span>
+                <span className="lang-trigger-code">{currentLang.code}</span>
+                <ChevronIcon open={langOpen} />
               </button>
-            ))}
+
+              {langOpen && (
+                <ul className="lang-dropdown" role="listbox" aria-label="Idioma">
+                  {LANGS.map((l) => (
+                    <li
+                      key={l.code}
+                      className={`lang-option${lang === l.code ? " lang-option--active" : ""}`}
+                      role="option"
+                      aria-selected={lang === l.code}
+                      onClick={() => { setLang(l.code); setLangOpen(false); }}
+                    >
+                      <span className="lang-flag">{l.flag}</span>
+                      <span className="lang-option-code">{l.code}</span>
+                      {lang === l.code && (
+                        <span className="lang-check"><CheckIcon /></span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
 
-          {/* Header */}
+          {/* ── Header ── */}
           <div className="panel-head">
             <div className="panel-head-avatar">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -260,7 +309,7 @@ export default function ChatWidget({
             </div>
           )}
 
-          {/* Mensajes */}
+          {/* ── Mensajes ── */}
           <div className="messages" ref={scrollRef}>
             {messages.length === 0 && (
               <div className="empty">
@@ -293,7 +342,7 @@ export default function ChatWidget({
             )}
           </div>
 
-          {/* Compositor */}
+          {/* ── Compositor ── */}
           <form ref={formRef} className="composer" onSubmit={handleSubmit}>
             <textarea
               ref={textareaRef}

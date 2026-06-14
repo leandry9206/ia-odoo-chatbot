@@ -25,7 +25,11 @@ lib/prompt.ts             → buildSystemPrompt()     (inyecta contexto en el pr
 app/api/chat/route.ts     → POST /api/chat          (stream de respuesta con Gemini)
       │
       ▼
-components/ChatWidget.tsx → UI del chat             (widget embebible)
+components/ChatWidget.tsx → UI del chat             (widget embebible, 4 idiomas)
+      │
+      ▼
+app/embed/page.tsx        → /embed                  (página mínima para iframe externo)
+components/HomeLanding.tsx→ /                       (landing: dos iframes side-by-side, 4 idiomas)
 ```
 
 ---
@@ -42,7 +46,11 @@ components/ChatWidget.tsx → UI del chat             (widget embebible)
 | `lib/retrieval.ts` | `retrieve(question)` → embed → query → filtra por score → devuelve `contextBlock` |
 | `lib/prompt.ts` | `buildSystemPrompt(context)` → instrucciones + contexto RAG para el modelo |
 | `app/api/chat/route.ts` | Endpoint POST: recibe mensajes, llama `retrieve`, llama Gemini, stream de respuesta |
-| `components/ChatWidget.tsx` | Widget React del chat (embebible vía `/embed`) |
+| `app/page.tsx` | Punto de entrada raíz — renderiza `<HomeLanding />` |
+| `components/HomeLanding.tsx` | **Landing page** (client): dos chatbots en iframes, selector de idioma para el home (FR/ES/EN/DE) |
+| `app/embed/page.tsx` | Página de embed mínima: lee `?contexts` y `?theme`, pasa props al widget |
+| `components/ChatWidget.tsx` | Widget React del chat: combobox de idioma (FR/ES/EN/DE), temas odoo y destino |
+| `app/globals.css` | Estilos globales: tokens CSS, widget (`.panel`, `.lang-*`), temas, landing (`.l-*`) |
 | `.github/workflows/reindex.yml` | Re-indexado nocturno (todas las fuentes) o manual por fuente |
 
 ---
@@ -109,6 +117,19 @@ npm run dev                  # Servidor Next.js de desarrollo
 
 ---
 
+## Soporte multiidioma
+
+Ambas interfaces — la landing y el widget de chat — soportan **FR · ES · EN · DE** de forma independiente:
+
+| Interfaz | Componente | Selector |
+|---|---|---|
+| Landing page (`/`) | `HomeLanding.tsx` | Pills en esquina superior derecha |
+| Widget de chat (`/embed`) | `ChatWidget.tsx` | Combobox desplegable en la barra superior |
+
+Los idiomas solo afectan a los textos de la UI; el modelo RAG responde en el idioma de la pregunta del usuario.
+
+---
+
 ## Filtrado de contextos por chatbot (multi-tenant)
 
 Cada instancia del widget puede limitarse a uno o varios contextos pasando el parámetro `contexts` (ids separados por coma) en la URL del iframe:
@@ -116,7 +137,7 @@ Cada instancia del widget puede limitarse a uno o varios contextos pasando el pa
 | Web que embebe | URL del iframe | Contextos accesibles |
 |---|---|---|
 | mercurio.lahavane.com | `/embed` | Todos (Mercurio + Destino + …) |
-| destino-world.fr | `/embed?contexts=destino` | Solo Destino |
+| destino-world.fr | `/embed?contexts=destino&theme=destino` | Solo Destino, tema oscuro |
 | Otra web Odoo | `/embed?contexts=mercurio` | Solo Mercurio |
 
 El filtro viaja por:
