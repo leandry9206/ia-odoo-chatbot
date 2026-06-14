@@ -172,11 +172,23 @@ async function crawlViaGhostApi(source: Source): Promise<Page[]> {
 // ── Orquestador ─────────────────────────────────────────────────────────────
 
 async function crawlSource(source: Source): Promise<Page[]> {
-  // Si el tipo es ghost y hay API key → usamos la Content API (sin 403, sin bot-blocking)
   if (source.type === "ghost" && source.ghostApiKey) {
-    return crawlViaGhostApi(source);
+    // Estrategia híbrida para Ghost:
+    // 1. Ghost Content API → posts y páginas del editor (texto limpio, sin bot-blocking)
+    // 2. Sitemap scraping → páginas HTML custom del theme (no gestionadas desde el CMS)
+    // 3. Deduplicamos por URL: la API tiene prioridad sobre el scraping
+    const [apiPages, sitemapPages] = await Promise.all([
+      crawlViaGhostApi(source),
+      crawlViaSitemap(source),
+    ]);
+    const seen = new Set(apiPages.map((p) => p.url));
+    const extra = sitemapPages.filter((p) => !seen.has(p.url));
+    if (extra.length > 0) {
+      console.log(`[${source.id}] +${extra.length} páginas custom del theme (sitemap) añadidas.`);
+    }
+    return [...apiPages, ...extra];
   }
-  // Fallback: sitemap para Odoo y sitios genéricos
+  // Odoo y sitios genéricos: solo sitemap
   return crawlViaSitemap(source);
 }
 
