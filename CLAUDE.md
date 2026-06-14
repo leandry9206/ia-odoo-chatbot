@@ -22,7 +22,7 @@ Cuando el usuario pida commit y push, hazlo en este orden:
 
 ## Contexto del proyecto
 
-- Chat: **Groq** (`llama-3.3-70b-versatile`, free tier)
+- Chat: **Groq** (`meta-llama/llama-4-scout-17b-16e-instruct`, free tier; en `lib/groq-config.ts`)
 - Embeddings: **Gemini** (`gemini-embedding-001`, 768 dims, COSINE)
 - Base vectorial: **Upstash Vector** (serverless)
 - Hosting: **Vercel**

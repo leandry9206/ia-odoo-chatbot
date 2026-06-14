@@ -14,7 +14,7 @@ Plataforma de **dos chatbots RAG** (Retrieval-Augmented Generation) que indexan 
 
 - **Next.js 15** (App Router, TypeScript)
 - **Groq** vía `@ai-sdk/groq`
-  - Chat: `llama-3.3-70b-versatile` (free tier)
+  - Chat: `meta-llama/llama-4-scout-17b-16e-instruct` (free tier) — definido en `lib/groq-config.ts`
 - **Google Gemini** vía `@ai-sdk/google`
   - Embeddings: `gemini-embedding-001` (768 dimensiones, COSINE)
 - **Upstash Vector** — base vectorial serverless

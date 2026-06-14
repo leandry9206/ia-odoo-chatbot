@@ -1,4 +1,5 @@
 import ChatWidget from "@/components/ChatWidget";
+import { getRateLimitStatus } from "@/lib/groq-rate-limit";
 
 // Página mínima y transparente: solo el widget, pensada para incrustarse
 // en cualquier web mediante un <iframe>.
@@ -19,6 +20,12 @@ export default async function Embed({
 }) {
   const params = await searchParams;
 
+  // Lectura del singleton en el servidor — cero llamadas a Groq.
+  // Ambas páginas /embed se renderizan en el mismo proceso Node, por lo que
+  // leen exactamente el mismo valor: los dos widgets arrancan con estado idéntico.
+  const status = getRateLimitStatus();
+  const initialRateLimitSeconds = status.available ? null : (status.retryAfter ?? null);
+
   const contexts = params.contexts
     ? params.contexts.split(",").map((c) => c.trim()).filter(Boolean)
     : undefined;
@@ -27,7 +34,12 @@ export default async function Embed({
 
   return (
     <div style={{ background: "transparent" }}>
-      <ChatWidget alwaysOpen contexts={contexts} theme={theme} />
+      <ChatWidget
+        alwaysOpen
+        contexts={contexts}
+        theme={theme}
+        initialRateLimitSeconds={initialRateLimitSeconds}
+      />
     </div>
   );
 }

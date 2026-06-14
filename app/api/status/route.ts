@@ -1,41 +1,75 @@
-import { createGroq } from "@ai-sdk/groq";
-import { generateText } from "ai";
-
-const groq = createGroq({ apiKey: process.env.GROQ_API_KEY });
+import {
+  getRateLimitStatus,
+  setRateLimit,
+  needsProbe,
+  markProbeOk,
+} from "@/lib/groq-rate-limit";
+import { rateLimitSeconds } from "@/lib/groq-errors";
+import { GROQ_MODEL } from "@/lib/groq-config";
 
 export const runtime = "nodejs";
-export const maxDuration = 10;
 
-function parseGroqRetryTime(msg: string): number | null {
-  const match = msg.match(/try again in\s+(?:(\d+)m)?(\d+(?:\.\d+)?)s/i);
-  if (!match) return null;
-  const minutes = match[1] ? parseInt(match[1], 10) : 0;
-  const seconds = parseFloat(match[2]);
-  return Math.ceil(minutes * 60 + seconds);
-}
-
+// GET /api/status → { available, retryAfter? }
+//
+// Estrategia de coste mínimo:
+//   1. Si el singleton ya sabe que estamos limitados → responde sin tocar Groq (0 tokens)
+//   2. Si sondeamos hace < 60 s y salió OK → responde "disponible" sin tocar Groq (0 tokens)
+//   3. Solo en cold-start / sin info reciente → un sondeo mínimo a Groq (fetch directo):
+//        · si está limitado (TPD), el 429 se rechaza sin consumir tokens
+//        · si está disponible, consume ~unos pocos tokens (cacheado 60 s)
 export async function GET() {
-  const noCache = { headers: { "Cache-Control": "no-store, max-age=0" } };
+  const resHeaders = { "Cache-Control": "no-store, max-age=0" };
+
+  const cached = getRateLimitStatus();
+  if (!cached.available) {
+    return Response.json(cached, { headers: resHeaders });
+  }
+
+  if (!needsProbe()) {
+    return Response.json({ available: true }, { headers: resHeaders });
+  }
+
   try {
-    await generateText({
-      model: groq("llama-3.3-70b-versatile"),
-      messages: [{ role: "user", content: "hi" }],
-      maxTokens: 1,
+    // Fetch directo a Groq: acceso determinista al status HTTP, body y headers.
+    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        messages: [{ role: "user", content: "ping" }],
+        max_tokens: 1,
+      }),
     });
-    return Response.json({ available: true }, noCache);
-  } catch (err) {
-    const e = err as Record<string, unknown>;
-    const status = (e?.statusCode ?? e?.status) as number | undefined;
-    const msg = String(e?.message ?? "");
-    if (
-      status === 429 ||
-      msg.toLowerCase().includes("rate_limit_exceeded") ||
-      msg.toLowerCase().includes("rate limit")
-    ) {
-      const retryAfter = parseGroqRetryTime(msg) ?? 60;
-      return Response.json({ available: false, retryAfter }, noCache);
+
+    if (res.status === 429) {
+      // Reconstruir un objeto compatible con rateLimitSeconds (que filtra TPM y lee el tiempo).
+      const body = await res.text();
+      const secs = rateLimitSeconds({
+        statusCode: 429,
+        message: body,
+        responseHeaders: { "retry-after": res.headers.get("retry-after") ?? "" },
+      });
+      if (secs !== null) {
+        setRateLimit(secs); // memoriza para no volver a sondear
+        return Response.json({ available: false, retryAfter: secs }, { headers: resHeaders });
+      }
+      // 429 por TPM (tokens por minuto) → se resuelve en segundos, no bloquear.
+      return Response.json({ available: true }, { headers: resHeaders });
     }
-    // Network / auth errors → don't block the user
-    return Response.json({ available: true }, noCache);
+
+    if (res.ok) {
+      markProbeOk();
+      return Response.json({ available: true }, { headers: resHeaders });
+    }
+
+    // Otro error (5xx, auth…) → no bloquear al usuario.
+    console.error("Sondeo /api/status, status inesperado:", res.status);
+    return Response.json({ available: true }, { headers: resHeaders });
+  } catch (err) {
+    console.error("Sondeo /api/status falló:", err);
+    return Response.json({ available: true }, { headers: resHeaders });
   }
 }

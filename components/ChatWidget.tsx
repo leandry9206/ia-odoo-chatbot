@@ -187,22 +187,27 @@ export default function ChatWidget({
   alwaysOpen = false,
   contexts,
   theme = "odoo",
+  initialRateLimitSeconds = null,
 }: {
   alwaysOpen?: boolean;
   contexts?: string[];
   theme?: "odoo" | "destino";
+  initialRateLimitSeconds?: number | null;
 }) {
   const [open, setOpen]                         = useState(alwaysOpen);
   const [lang, setLang]                         = useState<Lang>("FR");
   const [langOpen, setLangOpen]                 = useState(false);
   const [rateLimitedUntil, setRateLimitedUntil] = useState<number | null>(null);
   const [secondsLeft, setSecondsLeft]           = useState(0);
-  const [checking, setChecking]                 = useState(true);
+  // Si el servidor ya nos dio el estado (initialRateLimitSeconds != null), no hace falta verificar.
+  const [checking, setChecking]                 = useState(initialRateLimitSeconds == null);
   const tr = T[lang];
 
   const applyRateLimit = useCallback((seconds: number) => {
     const until = Date.now() + seconds * 1000;
     setRateLimitedUntil(until);
+    // localStorage.setItem dispara automáticamente el evento "storage" en los
+    // otros iframes/pestañas del mismo origen (no en este mismo, que ya tiene el estado).
     try { localStorage.setItem(LS_KEY, String(until)); } catch {}
   }, []);
 
@@ -225,8 +230,20 @@ export default function ChatWidget({
   const isLoading   = status === "submitted" || status === "streaming";
   const isRateLimited = rateLimitedUntil !== null;
 
-  // Comprobar disponibilidad al montar: localStorage → API
+  // Comprobar disponibilidad al montar.
+  // Si el servidor ya informó el estado (initialRateLimitSeconds != null), lo aplicamos
+  // directamente y salimos — cero llamadas a localStorage ni a /api/status.
+  // Si no, fallback: localStorage → /api/status (cubre cold-starts serverless y accesos directos).
   useEffect(() => {
+    if (initialRateLimitSeconds != null && initialRateLimitSeconds > 0) {
+      applyRateLimit(initialRateLimitSeconds);
+      return;
+    }
+
+    let cancelled = false;
+
+    // 1. Leer localStorage de forma síncrona (< 1 ms)
+    let needsApiCheck = true;
     try {
       const saved = localStorage.getItem(LS_KEY);
       if (saved) {
@@ -234,20 +251,42 @@ export default function ChatWidget({
         if (until > Date.now()) {
           setRateLimitedUntil(until);
           setChecking(false);
-          return;
+          needsApiCheck = false;
+        } else {
+          localStorage.removeItem(LS_KEY);
         }
-        localStorage.removeItem(LS_KEY);
       }
-    } catch {}
+    } catch {
+      // localStorage no disponible (modo privado, etc.) — continúa al API check
+    }
 
-    fetch("/api/status")
+    if (!needsApiCheck) return;
+
+    // 2. Comprobar disponibilidad en el servidor (sin llamar a Groq)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000); // 4 s máximo
+
+    fetch("/api/status", { signal: controller.signal })
       .then((r) => r.json())
       .then((data: { available: boolean; retryAfter?: number }) => {
-        if (!data.available && data.retryAfter) applyRateLimit(data.retryAfter);
+        if (!cancelled && !data.available && data.retryAfter) {
+          applyRateLimit(data.retryAfter);
+        }
       })
-      .catch(() => {})
-      .finally(() => setChecking(false));
-  }, [applyRateLimit]);
+      .catch(() => {
+        // Error de red o timeout → asumir disponible, no bloquear al usuario
+      })
+      .finally(() => {
+        clearTimeout(timeoutId);
+        if (!cancelled) setChecking(false);
+      });
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+      clearTimeout(timeoutId);
+    };
+  }, [initialRateLimitSeconds, applyRateLimit]);
 
   // Limpiar localStorage cuando expira el rate-limit
   useEffect(() => {
@@ -255,6 +294,27 @@ export default function ChatWidget({
       try { localStorage.removeItem(LS_KEY); } catch {}
     }
   }, [rateLimitedUntil]);
+
+  // Sincronización en tiempo real entre los dos chatbots (iframes del mismo origen).
+  // Cuando un widget detecta el rate-limit y escribe en localStorage, el evento "storage"
+  // se dispara en los OTROS iframes → todos pasan a "en espera" a la vez.
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== LS_KEY) return;
+      if (e.newValue) {
+        const until = parseInt(e.newValue, 10);
+        if (until > Date.now()) {
+          setRateLimitedUntil(until);
+          setChecking(false);
+        }
+      } else {
+        // se limpió en otro iframe → disponible de nuevo
+        setRateLimitedUntil(null);
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
 
   // Scroll al fondo al recibir mensajes
   useEffect(() => {

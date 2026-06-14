@@ -1,7 +1,7 @@
 # Arquitectura del proyecto — ia-odoo-chatbot
 
-Chatbot RAG (Retrieval-Augmented Generation) que indexa múltiples webs y responde con Gemini.
-Stack: Next.js 15 · Gemini 2.5 Flash · Upstash Vector · Vercel.
+Chatbot RAG (Retrieval-Augmented Generation) que indexa múltiples webs y responde con Groq (Llama).
+Stack: Next.js 15 · Groq `llama-4-scout-17b-16e-instruct` (chat) · Gemini `gemini-embedding-001` (embeddings) · Upstash Vector · Vercel.
 
 ---
 
@@ -45,11 +45,15 @@ components/HomeLanding.tsx→ /                       (landing: dos iframes side
 | `lib/embeddings.ts` | `embed()` y `embedOne()` con Gemini `text-embedding-004` |
 | `lib/retrieval.ts` | `retrieve(question)` → embed → query → filtra por score → devuelve `contextBlock` |
 | `lib/prompt.ts` | `buildSystemPrompt(context)` → instrucciones + contexto RAG para el modelo |
-| `app/api/chat/route.ts` | Endpoint POST: recibe mensajes, llama `retrieve`, llama Gemini, stream de respuesta |
+| `app/api/chat/route.ts` | Endpoint POST: recibe mensajes, llama `retrieve`, llama Groq (modelo de `lib/groq-config.ts`), stream de respuesta. Detecta 429 y devuelve `RATE_LIMIT:<segundos>` |
+| `app/api/status/route.ts` | Endpoint GET: lee el singleton; si no sabe (cold-start) hace **un** sondeo mínimo a Groq vía `fetch` directo (no SDK → status/body/headers deterministas), cacheado 60 s. Devuelve `{ available, retryAfter? }` |
+| `lib/groq-rate-limit.ts` | Singleton en memoria del rate-limit: `setRateLimit`, `getRateLimitStatus`, `needsProbe`, `markProbeOk` (caché de sondeo 60 s) |
+| `lib/groq-errors.ts` | Parseo de errores 429 de Groq: `parseGroqRetryTime` (lee `"try again in 12m4s"`) y `rateLimitSeconds` (filtra TPM, devuelve segundos de TPD). Compartido por `/api/chat` y `/api/status` |
+| `lib/groq-config.ts` | `GROQ_MODEL` — nombre del modelo de chat en un único sitio; cambiarlo afecta a `/api/chat` y `/api/status` |
 | `app/page.tsx` | Punto de entrada raíz — renderiza `<HomeLanding />` |
 | `components/HomeLanding.tsx` | **Landing page** (client): dos chatbots en iframes, selector de idioma para el home (FR/ES/EN/DE) |
-| `app/embed/page.tsx` | Página de embed mínima: lee `?contexts` y `?theme`, pasa props al widget |
-| `components/ChatWidget.tsx` | Widget React del chat: combobox de idioma (FR/ES/EN/DE), temas odoo y destino |
+| `app/embed/page.tsx` | Página de embed mínima: lee `?contexts` y `?theme`, lee el singleton de rate-limit en el servidor y pasa `initialRateLimitSeconds` al widget (comprobación única a nivel de app) |
+| `components/ChatWidget.tsx` | Widget React del chat: combobox de idioma (FR/ES/EN/DE), temas odoo y destino. Comprobación de disponibilidad al montar (localStorage → `/api/status`). Indicador de estado con 3 modos (online/checking/waiting). Banner rate-limit rediseñado + countdown |
 | `app/globals.css` | Estilos globales: tokens CSS, widget (`.panel`, `.lang-*`), temas, landing (`.l-*`) |
 | `.github/workflows/reindex.yml` | Re-indexado nocturno (todas las fuentes) o manual por fuente |
 
@@ -110,7 +114,7 @@ npm run dev                  # Servidor Next.js de desarrollo
 ## Índice vectorial
 
 - Proveedor: Upstash Vector (serverless)
-- Dimensiones: 768 (Gemini `text-embedding-004` truncado)
+- Dimensiones: 768 (`gemini-embedding-001` con `outputDimensionality: 768`)
 - Métrica: COSINE
 - Score mínimo de relevancia: 0.4 (en `lib/retrieval.ts`)
 - Top-K por consulta: 5
@@ -123,8 +127,8 @@ Ambas interfaces — la landing y el widget de chat — soportan **FR · ES · E
 
 | Interfaz | Componente | Selector |
 |---|---|---|
-| Landing page (`/`) | `HomeLanding.tsx` | Pills en esquina superior derecha |
-| Widget de chat (`/embed`) | `ChatWidget.tsx` | Combobox desplegable en la barra superior |
+| Landing page (`/`) | `HomeLanding.tsx` | Combobox desplegable en la esquina superior derecha |
+| Widget de chat (`/embed`) | `ChatWidget.tsx` | Combobox desplegable en la barra superior del widget |
 
 Los idiomas solo afectan a los textos de la UI; el modelo RAG responde en el idioma de la pregunta del usuario.
 
@@ -152,6 +156,102 @@ URL ?contexts=destino
 ```
 
 Sin `?contexts=`, no se aplica ningún filtro y se busca en toda la base vectorial.
+
+---
+
+## Widget flotante externo
+
+Para integrar el chatbot en cualquier web (Odoo, Ghost, WordPress…) sin modificar el proyecto, se añade un snippet HTML que abre un `<iframe>` flotante sobre la página:
+
+| Site | Color botón | URL iframe |
+|---|---|---|
+| mercurio.lahavane.com (Odoo) | `#5f5e97` (morado) | `/embed` |
+| destino-world.fr (Ghost) | `#0f141c → #243d52` (marino) | `/embed?contexts=destino&theme=destino` |
+
+El snippet incluye: botón circular fijo, `<iframe>` oculto, toggle JS, animación de apertura y cambio de icono chat/×. IDs únicos por sitio (`chatbot-btn` / `chatbot-btn-d`) para coexistir si ambos se usan en la misma página.
+
+---
+
+## Hoja de ruta — Ampliaciones planificadas
+
+### Conexión BD Odoo interna
+
+Conectar el agente directamente a la base de datos PostgreSQL de Odoo vía API XML-RPC o JSON-RPC. Permitiría consultar en tiempo real pedidos, clientes, productos y contactos, enriqueciendo las respuestas del agente con datos operativos que no están en el sitemap público.
+
+Integración prevista: nuevo tool/function en `app/api/chat/route.ts` que llame a la API de Odoo antes de construir el prompt.
+
+### Sistema CRA VL (Mercurio)
+
+Módulo de Mercurio para la creación de viajes con ritmo y coherencia. El agente actuará como asistente del vendedor externo: sugerirá etapas, ritmos de viaje, coherencia de destinos y experiencias. Requiere indexar la lógica del CRA VL como fuente adicional y posiblemente un modo conversacional guiado (multi-step).
+
+### Metodología RST (ficheros .rst)
+
+Indexar los ficheros de documentación antigua en formato RST (reStructuredText) como nueva fuente de conocimiento. Pipeline idéntica a Odoo/Ghost:
+
+1. Nuevo script `scripts/crawl-rst.ts` — lee `.rst` locales, extrae texto limpio
+2. `scripts/ingest.ts` — chunking + embeddings → Upstash con `source: 'metodologia'`
+3. Añadir entrada en `scripts/sources.config.ts` con `id: 'metodologia'`
+4. El agente puede filtrar con `?contexts=metodologia`
+
+---
+
+## Backups de la base de conocimiento vectorial
+
+### Exportar
+
+```bash
+npm run export
+# → llama a Upstash list-vectors API (paginado)
+# → guarda en data/backup-YYYY-MM-DD.json
+# Estructura: [{ id, vector: number[768], metadata: { text, url, title, source } }]
+```
+
+Almacenar el JSON resultante en:
+- **GitHub** (con Git LFS si supera 50 MB)
+- **Google Drive / S3** para backups periódicos
+
+### Restaurar / Migrar
+
+```bash
+npm run import --file data/backup-YYYY-MM-DD.json
+# Lee el JSON, opcionalmente filtra por source
+# Llama a upsertChunks() en el nuevo índice Upstash
+# También sirve para migrar a otro proveedor vectorial (Pinecone, Qdrant, pgvector…)
+```
+
+---
+
+## Modelo de chat y gestión de rate-limit
+
+El chat usa **Groq** (`meta-llama/llama-4-scout-17b-16e-instruct`, free tier; definido en `lib/groq-config.ts`). Los embeddings siguen con **Gemini** (`gemini-embedding-001`).
+
+Cuando Groq devuelve HTTP 429 (cuota agotada):
+
+1. `rateLimitSeconds()` (en `lib/groq-errors.ts`) parsea el tiempo exacto del mensaje de error Groq (`"try again in 12m4.032s"`) y como fallback usa el header `retry-after`. `route.ts` además llama a `setRateLimit()` para memorizar el estado en el singleton
+2. Devuelve el token `RATE_LIMIT:<segundos>` al cliente (vía stream error o HTTP 429)
+3. `useChat.onError` en `ChatWidget.tsx` detecta el token, fija `rateLimitedUntil` y persiste en `localStorage` (que sincroniza el otro chatbot vía evento `storage`)
+4. Un `setInterval` hace el countdown; mientras está activo:
+   - El textarea y el botón de envío quedan deshabilitados
+   - Se muestra un banner con reloj, mensaje en el idioma activo y cuenta atrás visible
+   - No se realizan llamadas adicionales a la API
+
+**Comprobación proactiva al cargar — comprobación única a nivel de aplicación:**
+
+`app/embed/page.tsx` (server component) lee el singleton `getRateLimitStatus()` durante el SSR y pasa `initialRateLimitSeconds` como prop a `ChatWidget`. Ambas páginas `/embed` se renderizan en el mismo proceso Node, por lo que obtienen **exactamente el mismo valor**: los dos widgets arrancan con estado idéntico.
+
+Flujo según escenario:
+1. **Singleton tiene rate-limit** → ambas páginas se renderizan con `initialRateLimitSeconds > 0` → `ChatWidget` aplica el estado directamente sin tocar `localStorage` ni `/api/status` → ambos muestran naranja desde el primer frame
+2. **Singleton vacío** (cold-start / servidor recién iniciado) → `initialRateLimitSeconds = null` → el widget hace fallback: `localStorage` → `GET /api/status`, que hace **un** sondeo mínimo a Groq vía `fetch` directo (cacheado 60 s) para conocer el estado real. Se usa `fetch` en vez del SDK porque el SDK envolvía el error 429 y el sondeo lo "tragaba" reportando disponible incorrectamente
+
+El indicador de estado tiene 3 modos: gris pulsante (verificando) → verde (online) → naranja (en espera).
+
+**Sincronización en tiempo real entre los dos chatbots:**
+
+Cuando un widget detecta el rate-limit al enviar un mensaje (`useChat.onError` → `applyRateLimit`), escribe en `localStorage`. El evento nativo `storage` se dispara en los **otros** iframes del mismo origen → un `useEffect` con listener pasa todos los widgets a "en espera" a la vez, sin recargar la página. Al expirar, se limpia `localStorage` y el evento devuelve todos a "en línea".
+
+**Consumo de la API de Groq por las comprobaciones de estado:**
+- Leer el singleton (caso normal) = **0 tokens** (no toca Groq)
+- Sondeo en cold-start: si está limitado, el 429 se rechaza **sin consumir tokens**; si está disponible, ~unos pocos tokens, y se cachea 60 s
 
 ---
 
