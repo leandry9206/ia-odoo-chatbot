@@ -109,6 +109,31 @@ npm run dev                  # Servidor Next.js de desarrollo
 
 ---
 
+## Filtrado de contextos por chatbot (multi-tenant)
+
+Cada instancia del widget puede limitarse a uno o varios contextos pasando el parámetro `contexts` (ids separados por coma) en la URL del iframe:
+
+| Web que embebe | URL del iframe | Contextos accesibles |
+|---|---|---|
+| mercurio.lahavane.com | `/embed` | Todos (Mercurio + Destino + …) |
+| destino-world.fr | `/embed?contexts=destino` | Solo Destino |
+| Otra web Odoo | `/embed?contexts=mercurio` | Solo Mercurio |
+
+El filtro viaja por:
+```
+URL ?contexts=destino
+  → embed/page.tsx (lee searchParams, pasa prop al widget)
+  → ChatWidget (prop contexts → body del fetch)
+  → /api/chat (lee contexts del body)
+  → retrieve(question, 5, contexts)
+  → buildSourceFilter() → expresión de filtro Upstash
+  → index.query({ filter: "source = 'destino'" })
+```
+
+Sin `?contexts=`, no se aplica ningún filtro y se busca en toda la base vectorial.
+
+---
+
 ## Despliegue
 
 Vercel → variables de entorno en el dashboard. El workflow de GitHub Actions re-indexa nightly.

@@ -50,12 +50,15 @@ export interface Match {
   score: number;
 }
 
-export async function query(vector: number[], topK = 5): Promise<Match[]> {
+// filter: expresión de metadata de Upstash, e.g. "source = 'destino'"
+// Si no se pasa, se busca en todos los contextos.
+export async function query(vector: number[], topK = 5, filter?: string): Promise<Match[]> {
   const index = getIndex();
   const results = await index.query({
     vector,
     topK,
     includeMetadata: true,
+    ...(filter ? { filter } : {}),
   });
   return results
     .filter((r) => r.metadata)

@@ -3,15 +3,16 @@ import { streamText, type CoreMessage } from "ai";
 import { retrieve } from "@/lib/retrieval";
 import { buildSystemPrompt } from "@/lib/prompt";
 
-// Se ejecuta en el runtime Node de Vercel.
 export const runtime = "nodejs";
-export const maxDuration = 30; // segundos
+export const maxDuration = 30;
 
 export async function POST(req: Request) {
   try {
-    const { messages } = (await req.json()) as { messages: CoreMessage[] };
+    const { messages, contexts } = (await req.json()) as {
+      messages: CoreMessage[];
+      contexts?: string[]; // ids de fuentes a consultar; undefined = todos
+    };
 
-    // 1. Tomar la última pregunta del usuario
     const lastUser = [...messages].reverse().find((m) => m.role === "user");
     const question =
       typeof lastUser?.content === "string" ? lastUser.content : "";
@@ -20,10 +21,9 @@ export async function POST(req: Request) {
       return new Response("No se recibió ninguna pregunta.", { status: 400 });
     }
 
-    // 2. Recuperar fragmentos relevantes de la base vectorial (RAG)
-    const { contextBlock } = await retrieve(question, 5);
+    // Recuperar fragmentos del contexto solicitado (o de todos si no se especifica)
+    const { contextBlock } = await retrieve(question, 5, contexts);
 
-    // 3. Generar la respuesta con Gemini, anclada al contexto
     const result = streamText({
       model: google("gemini-2.5-flash"),
       system: buildSystemPrompt(contextBlock),

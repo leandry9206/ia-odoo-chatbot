@@ -99,12 +99,21 @@ const SendIcon = () => (
 );
 
 // ── Component ───────────────────────────────────────────────────
-export default function ChatWidget({ alwaysOpen = false }: { alwaysOpen?: boolean }) {
+export default function ChatWidget({
+  alwaysOpen = false,
+  contexts,
+}: {
+  alwaysOpen?: boolean;
+  contexts?: string[]; // ids de fuentes a consultar; undefined = todos los contextos
+}) {
   const [open, setOpen] = useState(alwaysOpen);
   const [lang, setLang] = useState<Lang>("FR");
   const tr = T[lang];
 
-  const { messages, input, handleInputChange, handleSubmit, status } = useChat({ api: "/api/chat" });
+  const { messages, input, handleInputChange, handleSubmit, status } = useChat({
+    api: "/api/chat",
+    body: contexts && contexts.length > 0 ? { contexts } : undefined,
+  });
   const scrollRef   = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const formRef     = useRef<HTMLFormElement>(null);
